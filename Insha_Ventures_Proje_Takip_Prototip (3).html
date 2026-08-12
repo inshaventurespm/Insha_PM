@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Insha Ventures — Proje &amp; Görev Takip Paneli</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+  :root{
+    color-scheme: light;
+    --surface-1:#fcfcfb; --surface-2:#f9f9f7; --surface-card:#ffffff;
+    --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#898781;
+    --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,0.10);
+    --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+    --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+    --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+    --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-450:#2a78d6; --seq-600:#184f95;
+    --shadow: 0 1px 2px rgba(11,11,11,0.06), 0 8px 24px rgba(11,11,11,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      color-scheme: dark;
+      --surface-1:#1a1a19; --surface-2:#0d0d0d; --surface-card:#212120;
+      --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#898781;
+      --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,0.10);
+      --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+      --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+      --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+      --seq-100:#184f95; --seq-250:#256abf; --seq-450:#3987e5; --seq-600:#9ec5f4;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--surface-2);color:var(--text-primary);
+    font-family: system-ui,-apple-system,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased;}
+  a{color:inherit;}
+  .app{max-width:1360px;margin:0 auto;padding:0 24px 64px;}
+  header.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:20px 24px;background:var(--surface-1);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:50;}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .brand .logo{width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,var(--s1),var(--s7));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0;}
+  .brand-text h1{font-size:15px;margin:0;font-weight:700;letter-spacing:-.01em;}
+  .brand-text p{font-size:12px;margin:1px 0 0;color:var(--text-secondary);}
+  nav.tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:10px;}
+  nav.tabs button{border:none;background:transparent;padding:9px 16px;font-size:13px;font-weight:600;
+    color:var(--text-secondary);border-radius:8px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+  nav.tabs button:hover{color:var(--text-primary);}
+  nav.tabs button.active{background:var(--surface-card);color:var(--text-primary);box-shadow:var(--shadow);}
+  .updated{font-size:12px;color:var(--text-muted);white-space:nowrap;}
+  main{padding-top:24px;}
+  .view{display:none;}
+  .view.active{display:block;animation:fade .2s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+  h2.section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--text-muted);margin:32px 0 12px;}
+  h2.section-title:first-child{margin-top:0;}
+
+  /* KPI tiles */
+  .kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;}
+  .kpi-tile{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;
+    padding:16px;box-shadow:var(--shadow);}
+  .kpi-tile .label{font-size:12px;color:var(--text-secondary);margin-bottom:8px;}
+  .kpi-tile .value{font-size:26px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:normal;}
+  .kpi-tile .sub{font-size:11px;color:var(--text-muted);margin-top:4px;}
+  .kpi-tile .value.critical{color:var(--critical);}
+  .kpi-tile .value.good{color:var(--good);}
+
+  /* charts grid */
+  .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;
+    padding:18px 20px;box-shadow:var(--shadow);}
+  .card h3{font-size:13px;font-weight:700;margin:0 0 14px;}
+  .barlist{display:flex;flex-direction:column;gap:10px;}
+  .barrow{display:grid;grid-template-columns:120px 1fr 40px;align-items:center;gap:10px;font-size:12px;}
+  .barrow .lbl{color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .barrow .track{position:relative;height:10px;background:var(--surface-2);border-radius:5px;overflow:hidden;}
+  .barrow .fill{position:absolute;left:0;top:0;height:100%;border-radius:5px;transition:width .4s ease;}
+  .barrow .val{text-align:right;color:var(--text-primary);font-weight:600;font-variant-numeric:tabular-nums;}
+  .gridline{position:absolute;top:0;bottom:0;width:1px;background:var(--grid);}
+
+  /* badges */
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:20px;font-size:11px;
+    font-weight:600;white-space:nowrap;border:1px solid transparent;}
+  .badge .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .badge.good{color:var(--good);background:color-mix(in srgb, var(--good) 12%, transparent);}
+  .badge.warning{color:#946200;background:color-mix(in srgb, var(--warning) 22%, transparent);}
+  .badge.serious{color:#a8502f;background:color-mix(in srgb, var(--serious) 18%, transparent);}
+  .badge.critical{color:var(--critical);background:color-mix(in srgb, var(--critical) 12%, transparent);}
+  .badge.muted{color:var(--text-muted);background:var(--surface-2);}
+  @media (prefers-color-scheme: dark){
+    .badge.warning{color:var(--warning);} .badge.serious{color:var(--serious);}
+  }
+
+  /* projects list */
+  .proj-card{background:var(--surface-card);border:1px solid var(--border);border-radius:12px;
+    margin-bottom:12px;box-shadow:var(--shadow);overflow:hidden;}
+  .proj-head{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;}
+  .proj-head:hover{background:var(--surface-2);}
+  .proj-color{width:4px;align-self:stretch;border-radius:3px;flex-shrink:0;}
+  .proj-info{flex:1;min-width:0;}
+  .proj-info .name{font-size:14px;font-weight:700;margin-bottom:3px;}
+  .proj-info .meta{font-size:12px;color:var(--text-secondary);}
+  .proj-progress{width:160px;flex-shrink:0;}
+  .proj-progress .track{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;margin-bottom:4px;}
+  .proj-progress .fill{height:100%;border-radius:4px;}
+  .proj-progress .pct{font-size:11px;color:var(--text-muted);text-align:right;font-variant-numeric:tabular-nums;}
+  .chev{font-size:12px;color:var(--text-muted);transition:transform .2s;flex-shrink:0;}
+  .proj-card.open .chev{transform:rotate(90deg);}
+  .proj-body{display:none;border-top:1px solid var(--border);padding:16px 20px 20px;}
+  .proj-card.open .proj-body{display:block;}
+  .proj-detail-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;font-size:12px;}
+  .proj-detail-grid .k{color:var(--text-muted);margin-bottom:3px;}
+  .proj-detail-grid .v{color:var(--text-primary);font-weight:600;}
+
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{text-align:left;color:var(--text-muted);font-weight:600;font-size:11px;text-transform:uppercase;
+    letter-spacing:.03em;padding:8px 10px;border-bottom:1px solid var(--grid);white-space:nowrap;}
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--grid);vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  .task-name{font-weight:600;}
+  .task-sub{color:var(--text-muted);font-size:11px;}
+  .mini-track{width:70px;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle;margin-right:6px;}
+  .mini-fill{height:100%;border-radius:3px;}
+
+  /* mind map */
+  .mm-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+  .mm-switch{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:9px;}
+  .mm-switch button{border:none;background:transparent;padding:7px 14px;font-size:12px;font-weight:600;
+    border-radius:7px;cursor:pointer;color:var(--text-secondary);}
+  .mm-switch button.active{background:var(--surface-card);color:var(--text-primary);box-shadow:var(--shadow);}
+  .mm-wrap{position:relative;background:var(--surface-card);border:1px solid var(--border);border-radius:16px;
+    box-shadow:var(--shadow);height:560px;overflow:hidden;}
+  .mm-wrap svg{position:absolute;top:0;left:0;width:100%;height:100%;}
+  .mm-node{position:absolute;transform:translate(-50%,-50%);padding:9px 16px;border-radius:24px;
+    font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;box-shadow:var(--shadow);
+    border:2px solid transparent;transition:transform .15s;color:#fff;text-align:center;}
+  .mm-node:hover{transform:translate(-50%,-50%) scale(1.06);}
+  .mm-node.center{background:var(--text-primary);color:var(--surface-1);padding:16px 26px;font-size:14px;border-radius:16px;}
+  .mm-node.selected{border-color:var(--text-primary);}
+  .mm-node .sub{display:block;font-size:10px;font-weight:500;opacity:.85;margin-top:1px;}
+  .mm-legend{position:absolute;bottom:14px;left:14px;font-size:11px;color:var(--text-muted);
+    background:var(--surface-card);padding:6px 10px;border-radius:8px;border:1px solid var(--border);}
+  .mm-panel{position:absolute;top:0;right:0;width:380px;height:100%;background:var(--surface-card);
+    border-left:1px solid var(--border);transform:translateX(100%);transition:transform .25s ease;
+    overflow-y:auto;padding:22px;}
+  .mm-panel.open{transform:translateX(0);}
+  .mm-panel h4{margin:0 0 4px;font-size:16px;}
+  .mm-panel .close{position:absolute;top:16px;right:16px;cursor:pointer;color:var(--text-muted);
+    font-size:18px;line-height:1;border:none;background:none;}
+  .mm-panel > div > .section-head-row:first-of-type{padding-right:30px;}
+  .mm-panel .meta-line{font-size:12px;color:var(--text-secondary);margin-bottom:14px;}
+  .mm-panel .task-item{padding:10px 0;border-bottom:1px solid var(--grid);}
+  .mm-panel .task-item:last-child{border-bottom:none;}
+  .mm-panel .task-item .tname{font-size:12.5px;font-weight:600;margin-bottom:4px;}
+  .mm-panel .task-item .trow{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-muted);}
+  .mm-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px;}
+
+  /* department view */
+  .dept-select-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+  .dept-chip{padding:8px 14px;border-radius:20px;font-size:12.5px;font-weight:600;cursor:pointer;
+    border:1px solid var(--border);background:var(--surface-card);color:var(--text-secondary);}
+  .dept-chip.active{background:var(--text-primary);color:var(--surface-1);border-color:var(--text-primary);}
+  .dept-kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+
+  .foot-note{margin-top:40px;padding:16px 20px;background:var(--surface-card);border:1px dashed var(--border);
+    border-radius:12px;font-size:12px;color:var(--text-secondary);line-height:1.6;}
+  .foot-note b{color:var(--text-primary);}
+
+  @media (max-width:1000px){
+    .kpi-row{grid-template-columns:repeat(3,1fr);}
+    .chart-grid{grid-template-columns:1fr;}
+    .proj-detail-grid{grid-template-columns:1fr 1fr;}
+    .dept-kpi-row{grid-template-columns:repeat(2,1fr);}
+    nav.tabs{overflow-x:auto;}
+  }
+
+  /* buttons */
+  .btn{border:1px solid var(--border);background:var(--surface-card);color:var(--text-primary);
+    font-size:12.5px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;transition:background .15s;font-family:inherit;}
+  .btn:hover{background:var(--surface-2);}
+  .btn.primary{background:var(--s1);border-color:var(--s1);color:#fff;}
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn.danger{color:var(--critical);}
+  .btn.sm{padding:5px 10px;font-size:11.5px;border-radius:7px;}
+  .btn.ghost{background:transparent;border-color:transparent;color:var(--text-muted);padding:4px 6px;}
+  .btn.ghost:hover{background:var(--surface-2);color:var(--text-primary);}
+  .icon-row{display:flex;gap:2px;flex-shrink:0;}
+  .section-head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:32px 0 12px;}
+  .section-head-row h2{margin:0;}
+  .row-actions{display:flex;gap:2px;white-space:nowrap;}
+
+  /* modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(11,11,11,0.45);display:none;
+    align-items:center;justify-content:center;z-index:200;padding:24px;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--surface-card);border-radius:14px;max-width:640px;width:100%;max-height:88vh;
+    display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;
+    border-bottom:1px solid var(--border);}
+  .modal-head h3{margin:0;font-size:15px;}
+  .modal-body{padding:20px 22px;overflow-y:auto;flex:1;}
+  .modal-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 22px;
+    border-top:1px solid var(--border);}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-field{display:flex;flex-direction:column;gap:5px;}
+  .form-field.full{grid-column:1 / -1;}
+  .form-field label{font-size:11.5px;font-weight:600;color:var(--text-secondary);}
+  .form-field input, .form-field select, .form-field textarea{
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13px;
+    font-family:inherit;background:var(--surface-1);color:var(--text-primary);}
+  .form-field textarea{resize:vertical;min-height:56px;}
+  .form-field input:focus, .form-field select:focus, .form-field textarea:focus{outline:2px solid var(--s1);outline-offset:-1px;}
+  .empty-hint{padding:24px;text-align:center;color:var(--text-muted);font-size:12.5px;}
+  .session-note{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--text-muted);
+    background:var(--surface-2);border-radius:8px;padding:8px 12px;margin-bottom:16px;}
+  .session-note.error{color:var(--critical);background:color-mix(in srgb, var(--critical) 10%, transparent);}
+  .session-note.ok{color:var(--good);background:color-mix(in srgb, var(--good) 10%, transparent);}
+  #loadingScreen{position:fixed;inset:0;background:var(--surface-2);display:flex;align-items:center;
+    justify-content:center;flex-direction:column;gap:10px;z-index:500;font-size:13px;color:var(--text-secondary);}
+  .spinner{width:22px;height:22px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--s1);
+    animation:spin .8s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* ---------- redesigned task / subtask hierarchy ---------- */
+  .task-list{display:flex;flex-direction:column;gap:8px;}
+  .task-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-2);}
+  .task-card-head{display:flex;align-items:center;gap:10px;padding:10px 12px;cursor:pointer;}
+  .task-card-head:hover{background:var(--surface-card);}
+  .task-card .chev-sm{font-size:10px;color:var(--text-muted);transition:transform .2s;width:12px;text-align:center;flex-shrink:0;}
+  .task-card.open .chev-sm{transform:rotate(90deg);}
+  .task-card-body{display:none;border-top:1px solid var(--border);padding:10px 12px 12px 30px;background:var(--surface-1);}
+  .task-card.open .task-card-body{display:block;}
+  .task-main{flex:1;min-width:0;}
+  .task-main .tname{font-weight:600;font-size:12.5px;}
+  .task-main .tsub{font-size:11px;color:var(--text-muted);margin-top:1px;}
+  .task-progress-mini{width:88px;flex-shrink:0;}
+  .subtask-head-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .subtask-head-row .lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);}
+  .subtask-list{display:flex;flex-direction:column;gap:6px;}
+  .subtask-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface-card);
+    border:1px solid var(--border);border-left:3px solid var(--s1);font-size:11.5px;}
+  .subtask-row .sname{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .subtask-row .smeta{color:var(--text-muted);font-size:10.5px;white-space:nowrap;}
+  .subtask-empty{font-size:11.5px;color:var(--text-muted);padding:6px 2px;}
+
+  /* ---------- stakeholders ---------- */
+  .stake-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;}
+  .stake-card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface-2);font-size:12px;}
+  .stake-card .sname{font-weight:700;font-size:12.5px;margin-bottom:2px;}
+  .stake-card .srole{color:var(--text-muted);font-size:11px;margin-bottom:6px;}
+  .stake-card .scontact{display:flex;flex-direction:column;gap:2px;color:var(--text-secondary);}
+  .stake-card .scontact a{color:var(--s1);text-decoration:none;}
+  .stake-card .sactions{display:flex;justify-content:flex-end;margin-top:6px;}
+
+  /* ---------- gantt ---------- */
+  .gantt-outer{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface-card);}
+  .gantt-scroll{overflow-x:auto;}
+  .gantt-flex{display:flex;min-width:max-content;}
+  .gantt-label-col{width:230px;flex-shrink:0;border-right:1px solid var(--border);position:sticky;left:0;background:var(--surface-card);z-index:3;}
+  .gantt-label-row{height:30px;display:flex;align-items:center;padding:0 10px;font-size:11.5px;border-bottom:1px solid var(--grid);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;gap:6px;}
+  .gantt-label-row.sub{padding-left:24px;color:var(--text-secondary);font-size:11px;}
+  .gantt-label-row.header{height:26px;font-weight:700;font-size:10.5px;text-transform:uppercase;color:var(--text-muted);background:var(--surface-2);}
+  .gantt-timeline{position:relative;}
+  .gantt-ruler{height:26px;position:relative;border-bottom:1px solid var(--grid);background:var(--surface-2);}
+  .gantt-tick{position:absolute;top:0;bottom:0;border-left:1px solid var(--grid);font-size:10px;color:var(--text-muted);
+    padding-left:4px;line-height:26px;white-space:nowrap;}
+  .gantt-track-row{height:30px;position:relative;border-bottom:1px solid var(--grid);}
+  .gantt-today-line{position:absolute;top:0;bottom:26px;width:1px;background:var(--critical);opacity:.55;z-index:2;}
+  .gantt-bar{position:absolute;top:5px;height:20px;border-radius:6px;cursor:grab;display:flex;align-items:center;padding:0 6px;
+    font-size:10.5px;color:#fff;white-space:nowrap;overflow:hidden;box-shadow:0 1px 2px rgba(11,11,11,0.2);user-select:none;}
+  .gantt-bar:active{cursor:grabbing;}
+  .gantt-bar.auto{opacity:.5;cursor:default;border:1px dashed rgba(255,255,255,0.7);}
+  .gantt-bar .handle{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize;}
+  .gantt-bar .handle.l{left:0;} .gantt-bar .handle.r{right:0;}
+  .gantt-legend{display:flex;flex-wrap:wrap;gap:14px;padding:8px 12px;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border);}
+  .gantt-legend .sw{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
+  .gantt-empty{padding:20px;text-align:center;color:var(--text-muted);font-size:12px;}
+
+  /* ---------- onay & hatırlatma ---------- */
+  .ar-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .ar-tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:10px;}
+  .ar-tabs button{border:none;background:transparent;padding:8px 16px;font-size:12.5px;font-weight:600;color:var(--text-secondary);
+    border-radius:8px;cursor:pointer;}
+  .ar-tabs button.active{background:var(--surface-card);color:var(--text-primary);box-shadow:var(--shadow);}
+  .kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;align-items:start;}
+  .kanban-col{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:10px;min-height:140px;transition:outline .1s;}
+  .kanban-col h4{margin:2px 6px 10px;font-size:12px;display:flex;align-items:center;justify-content:space-between;}
+  .kanban-col.dragover{outline:2px dashed var(--s1);outline-offset:-2px;}
+  .kanban-card{background:var(--surface-card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    box-shadow:var(--shadow);cursor:grab;}
+  .kanban-card:active{cursor:grabbing;}
+  .kanban-card .chk-row{display:flex;align-items:flex-start;gap:8px;}
+  .kanban-card .chk-row input[type=checkbox]{margin-top:2px;width:15px;height:15px;flex-shrink:0;cursor:pointer;}
+  .kanban-card .ctitle{font-weight:700;font-size:12.5px;flex:1;cursor:pointer;line-height:1.35;}
+  .kanban-card.done{opacity:.7;}
+  .kanban-card.done .ctitle{text-decoration:line-through;color:var(--text-muted);}
+  .kanban-card .cmeta{font-size:10.5px;color:var(--text-muted);margin-top:4px;margin-left:23px;}
+  .kanban-card .cdesc{margin-top:8px;margin-left:23px;}
+  .kanban-card .cdesc textarea{width:100%;min-height:56px;font-size:11.5px;}
+  .kanban-card .cactions{display:flex;justify-content:flex-end;gap:2px;margin-top:4px;}
+  @media (max-width: 1100px){ .kanban-board{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+
+<div id="loadingScreen"><div class="spinner"></div><div>Veritabanına bağlanılıyor…</div></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">IV</div>
+    <div class="brand-text">
+      <h1>Insha Ventures — Proje &amp; Görev Paneli</h1>
+      <p>Canlı veritabanı bağlantılı · giriş sistemi henüz yok</p>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-view="dashboard" class="active">Genel Bakış</button>
+    <button data-view="projects">Projeler</button>
+    <button data-view="mindmap">Mind Map</button>
+    <button data-view="departments">Departmanlar</button>
+    <button data-view="approvals">Onay &amp; Hatırlatma</button>
+  </nav>
+  <div class="updated">Rapor tarihi: <span id="todayLabel"></span></div>
+</header>
+
+<div class="app">
+<main>
+
+  <div class="session-note ok" id="dbStatusNote">🟢 Bağlı — yaptığın her ekleme/düzenleme/silme Supabase veritabanına kalıcı olarak kaydediliyor. Giriş sistemi henüz yok, dosyaya erişen herkes düzenleyebilir.</div>
+
+  <!-- DASHBOARD -->
+  <section class="view active" id="view-dashboard">
+    <h2 class="section-title">Genel Durum</h2>
+    <div class="kpi-row" id="kpiRow"></div>
+
+    <h2 class="section-title">Görünüm</h2>
+    <div class="chart-grid">
+      <div class="card">
+        <h3>Proje Durumu Dağılımı</h3>
+        <div class="barlist" id="chartProjectStatus"></div>
+      </div>
+      <div class="card">
+        <h3>Departmana Göre Geciken Görev Sayısı</h3>
+        <div class="barlist" id="chartDeptDelay"></div>
+      </div>
+      <div class="card">
+        <h3>Önceliğe Göre Açık Görev Sayısı</h3>
+        <div class="barlist" id="chartPriority"></div>
+      </div>
+      <div class="card">
+        <h3>Departmana Göre Ortalama Tamamlanma Oranı</h3>
+        <div class="barlist" id="chartDeptCompletion"></div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Kritik Gecikmiş Görevler</h2>
+    <div class="card" style="overflow-x:auto;">
+      <table id="tblCriticalDelay"></table>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="view" id="view-projects">
+    <div class="section-head-row">
+      <h2 class="section-title">Projeler <span style="text-transform:none;font-weight:400;">— bir projeye tıklayarak alt görevlerini görüntüleyin</span></h2>
+      <button class="btn primary" onclick="openAddProjectModal()">+ Yeni Proje</button>
+    </div>
+    <div id="projectList"></div>
+  </section>
+
+  <!-- MIND MAP -->
+  <section class="view" id="view-mindmap">
+    <div class="mm-toolbar">
+      <h2 class="section-title" style="margin:0;">Mind Map Görünümü</h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="mm-switch" id="mmSwitch">
+          <button data-mode="projects" class="active">Projeler</button>
+          <button data-mode="departments">Departmanlar</button>
+        </div>
+        <button class="btn primary" id="mmAddBtn" onclick="openAddProjectModal()">+ Yeni Proje</button>
+      </div>
+    </div>
+    <div class="mm-wrap" id="mmWrap">
+      <svg id="mmSvg"></svg>
+      <div id="mmNodes"></div>
+      <div class="mm-legend">Bir daireye tıklayın → sağda detaylar ve alt görevler açılır</div>
+      <div class="mm-panel" id="mmPanel">
+        <button class="close" id="mmPanelClose">✕</button>
+        <div id="mmPanelBody"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DEPARTMENTS -->
+  <section class="view" id="view-departments">
+    <h2 class="section-title">Departman Seç</h2>
+    <div class="dept-select-row" id="deptChips"></div>
+    <div id="deptContent"></div>
+  </section>
+
+  <!-- ONAY & HATIRLATMA -->
+  <section class="view" id="view-approvals">
+    <div class="ar-toolbar">
+      <h2 class="section-title" style="margin:0;">Onay &amp; Hatırlatma <span style="text-transform:none;font-weight:400;">— checklist ve öncelik panosu</span></h2>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="ar-tabs" id="arTabs">
+          <button data-artab="Onay" class="active">✅ Onay</button>
+          <button data-artab="Hatırlatma">⏰ Hatırlatma</button>
+        </div>
+        <button class="btn primary" id="arAddBtn" onclick="openAddApprovalModal('Onay')">+ Yeni Onay</button>
+      </div>
+    </div>
+    <div class="kanban-board" id="kanbanBoard"></div>
+  </section>
+
+  <datalist id="employeeOptions"></datalist>
+
+  <div class="foot-note">
+    Bu dosya artık Supabase'deki gerçek veritabanına canlı bağlı — yaptığın ekleme/düzenleme/silme işlemleri kalıcı olarak kaydediliyor.
+    Sırada giriş sistemi (herkesin kendi hesabıyla girmesi) ve dosyayı bir web adresine taşımak var.
+  </div>
+
+</main>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Başlık</h3>
+      <button class="btn ghost" id="modalX">✕</button>
+    </div>
+    <div class="modal-body"><div class="form-grid" id="modalForm"></div></div>
+    <div class="modal-foot">
+      <button class="btn danger ghost" id="modalDelete" style="display:none;">Sil</button>
+      <div style="flex:1;"></div>
+      <button class="btn" id="modalCancel">Vazgeç</button>
+      <button class="btn primary" id="modalSave">Kaydet</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"projeler": [{"Proje ID": "PRJ-001", "Proje Adı": "Yeni Ürün Lansmanı", "Proje Açıklaması": "Yeni finansal ürünün tasarım, hazırlık ve lansman çalışmaları.", "Proje Sahibi": "Çalışan 1", "Proje Yöneticisi": "Çalışan 2", "Lider Departman": "Ürün Yönetimi", "Katılımcı Departmanlar": "Strateji, Pazarlama, Satış, Risk ve Uyum", "Başlangıç Tarihi": "2026-06-01", "Hedef Bitiş Tarihi": "2026-09-30", "Gerçek Bitiş Tarihi": null, "Proje Durumu": "Aktif", "Öncelik": "Yüksek", "Tamamlanma Oranı": 0.43333333333333335, "Sağlık Durumu": "Yeşil", "Sonraki Kilometre Taşı": "Pilot müşteri testlerinin tamamlanması", "Risk / Blokaj": "Entegrasyon takviminde sınırlı esneklik", "Sonraki Aksiyon": "Pilot geri bildirimlerini kapat", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Açıklamalar": "Haftalık yönetim takibi yapılır."}, {"Proje ID": "PRJ-002", "Proje Adı": "CRM Sisteminin Yenilenmesi", "Proje Açıklaması": "CRM altyapısının süreç ve veri yapısıyla birlikte yenilenmesi.", "Proje Sahibi": "Çalışan 3", "Proje Yöneticisi": "Çalışan 4", "Lider Departman": "Ürün Yönetimi", "Katılımcı Departmanlar": "Satış, Pazarlama, Risk ve Uyum", "Başlangıç Tarihi": "2026-03-15", "Hedef Bitiş Tarihi": "2026-07-15", "Gerçek Bitiş Tarihi": null, "Proje Durumu": "Aktif", "Öncelik": "Kritik", "Tamamlanma Oranı": 0.5333333333333333, "Sağlık Durumu": "Kırmızı", "Sonraki Kilometre Taşı": "Veri taşıma doğrulaması", "Risk / Blokaj": "Veri kalitesi ve entegrasyon gecikmesi", "Sonraki Aksiyon": "Kritik veri hatalarını çöz", "Son Güncelleme Tarihi": "2026-07-10", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 23, "Açıklamalar": "Gecikme için iyileştirme planı açıldı."}, {"Proje ID": "PRJ-003", "Proje Adı": "Satış Kanalı Geliştirme Projesi", "Proje Açıklaması": "Yeni bayi ve dijital satış kanallarının geliştirilmesi.", "Proje Sahibi": "Çalışan 5", "Proje Yöneticisi": "Çalışan 6", "Lider Departman": "Satış", "Katılımcı Departmanlar": "Strateji, Pazarlama, Ürün Yönetimi", "Başlangıç Tarihi": "2026-05-10", "Hedef Bitiş Tarihi": "2026-08-20", "Gerçek Bitiş Tarihi": null, "Proje Durumu": "Beklemede", "Öncelik": "Yüksek", "Tamamlanma Oranı": 0.14285714285714285, "Sağlık Durumu": "Sarı", "Sonraki Kilometre Taşı": "Kanal iş modeli onayı", "Risk / Blokaj": "Yönetim kararı bekleniyor", "Sonraki Aksiyon": "Karar sonrası pilot kapsamını kesinleştir", "Son Güncelleme Tarihi": "2026-07-28", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Açıklamalar": "Karar sonuçlanana kadar kritik işler beklemede."}, {"Proje ID": "PRJ-004", "Proje Adı": "Yıllık Stratejik Planlama", "Proje Açıklaması": "2027 dönemine ilişkin stratejik plan ve bütçe önceliklerinin hazırlanması.", "Proje Sahibi": "Çalışan 1", "Proje Yöneticisi": "Çalışan 1", "Lider Departman": "Strateji", "Katılımcı Departmanlar": "Tüm Departmanlar", "Başlangıç Tarihi": "2026-04-01", "Hedef Bitiş Tarihi": "2026-06-30", "Gerçek Bitiş Tarihi": "2026-06-28", "Proje Durumu": "Tamamlandı", "Öncelik": "Orta", "Tamamlanma Oranı": 1, "Sağlık Durumu": "Yeşil", "Sonraki Kilometre Taşı": "Yönetim kurulu sunumu", "Risk / Blokaj": "Bulunmuyor", "Sonraki Aksiyon": "Öğrenimleri arşivle", "Son Güncelleme Tarihi": "2026-06-28", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Açıklamalar": "Proje planlanandan iki gün önce tamamlandı."}], "proje_gorevleri": [{"Görev ID": "TSK-001", "Proje ID": "PRJ-001", "Proje Adı": "Yeni Ürün Lansmanı", "Görev Adı": "Ürün gereksinimlerinin kesinleştirilmesi", "Görev Açıklaması": "İş ve müşteri gereksinimlerinin son hâle getirilmesi.", "Görev Sahibi Departman": "Ürün Yönetimi", "Sorumlu Kişi": "Çalışan 2", "Destek Veren Kişiler": "Çalışan 1, Çalışan 5", "Başlangıç Tarihi": "2026-06-01", "Son Tarih": "2026-06-20", "Gerçek Tamamlanma Tarihi": "2026-06-19", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 3, "Öncelik": "Yüksek", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": null, "Bağımlı Olduğu Departman": "Strateji", "Beklenen Teslimat / Çıktı": "Onaylı ürün gereksinim dokümanı", "Risk / Blokaj": null, "Sonraki Aksiyon": "Teknik tasarıma aktar", "Son Güncelleme Tarihi": "2026-06-19", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-002", "Proje ID": "PRJ-001", "Proje Adı": "Yeni Ürün Lansmanı", "Görev Adı": "Lansman iletişim planının hazırlanması", "Görev Açıklaması": "Kanal ve mesaj planının oluşturulması.", "Görev Sahibi Departman": "Pazarlama", "Sorumlu Kişi": "Çalışan 3", "Destek Veren Kişiler": "Çalışan 2", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-08-06", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Devam Ediyor", "Tamamlanma Oranı": 0.6, "Görev Ağırlığı": 2, "Öncelik": "Yüksek", "Aciliyet": "Acil", "Bağımlı Olduğu Görev": "TSK-001", "Bağımlı Olduğu Departman": "Ürün Yönetimi", "Beklenen Teslimat / Çıktı": "Onaylı lansman iletişim planı", "Risk / Blokaj": "İçerik onayı bekleniyor", "Sonraki Aksiyon": "İçerikleri yönetim onayına sun", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 1, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": "7 gün içinde teslim örneğidir."}, {"Görev ID": "TSK-003", "Proje ID": "PRJ-001", "Proje Adı": "Yeni Ürün Lansmanı", "Görev Adı": "Satış ekibi eğitim içeriğinin hazırlanması", "Görev Açıklaması": "Ürün anlatımı ve satış senaryolarının hazırlanması.", "Görev Sahibi Departman": "Satış", "Sorumlu Kişi": "Çalışan 5", "Destek Veren Kişiler": "Çalışan 2", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-28", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Başlanmadı", "Tamamlanma Oranı": 0, "Görev Ağırlığı": 2, "Öncelik": "Orta", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": "TSK-002", "Bağımlı Olduğu Departman": "Pazarlama", "Beklenen Teslimat / Çıktı": "Eğitim sunumu ve soru-cevap dokümanı", "Risk / Blokaj": null, "Sonraki Aksiyon": "İçerik iskeletini oluştur", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-004", "Proje ID": "PRJ-001", "Proje Adı": "Yeni Ürün Lansmanı", "Görev Adı": "Pilot ürün akışının geliştirilmesi", "Görev Açıklaması": "Pilot kullanıcı akışının uçtan uca geliştirilmesi.", "Görev Sahibi Departman": "Ürün Yönetimi", "Sorumlu Kişi": "Çalışan 4", "Destek Veren Kişiler": "Çalışan 6", "Başlangıç Tarihi": "2026-06-20", "Son Tarih": "2026-09-10", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Devam Ediyor", "Tamamlanma Oranı": 0.2, "Görev Ağırlığı": 5, "Öncelik": "Kritik", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": "TSK-001", "Bağımlı Olduğu Departman": "Risk ve Uyum", "Beklenen Teslimat / Çıktı": "Çalışan pilot ürün", "Risk / Blokaj": "Entegrasyon takvimi sıkışık", "Sonraki Aksiyon": "Haftalık teknik takip yap", "Son Güncelleme Tarihi": "2026-07-25", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": "Kritik teslimat örneğidir."}, {"Görev ID": "TSK-005", "Proje ID": "PRJ-002", "Proje Adı": "CRM Sisteminin Yenilenmesi", "Görev Adı": "Mevcut süreç analizi", "Görev Açıklaması": "CRM kullanım süreçlerinin haritalanması.", "Görev Sahibi Departman": "Strateji", "Sorumlu Kişi": "Çalışan 1", "Destek Veren Kişiler": "Çalışan 3", "Başlangıç Tarihi": "2026-03-15", "Son Tarih": "2026-04-10", "Gerçek Tamamlanma Tarihi": "2026-04-09", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 2, "Öncelik": "Orta", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": null, "Bağımlı Olduğu Departman": "Satış", "Beklenen Teslimat / Çıktı": "Onaylı mevcut durum analizi", "Risk / Blokaj": null, "Sonraki Aksiyon": "Hedef süreç tasarımına geç", "Son Güncelleme Tarihi": "2026-04-09", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-006", "Proje ID": "PRJ-002", "Proje Adı": "CRM Sisteminin Yenilenmesi", "Görev Adı": "Hedef CRM süreç tasarımı", "Görev Açıklaması": "Yeni CRM süreçlerinin ve rollerin tasarlanması.", "Görev Sahibi Departman": "Satış", "Sorumlu Kişi": "Çalışan 5", "Destek Veren Kişiler": "Çalışan 1", "Başlangıç Tarihi": "2026-04-11", "Son Tarih": "2026-05-20", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Devam Ediyor", "Tamamlanma Oranı": 0.8, "Görev Ağırlığı": 3, "Öncelik": "Yüksek", "Aciliyet": "Yakın", "Bağımlı Olduğu Görev": "TSK-005", "Bağımlı Olduğu Departman": "Strateji", "Beklenen Teslimat / Çıktı": "Hedef süreç ve rol matrisi", "Risk / Blokaj": "Son kullanıcı görüşleri tamamlanmadı", "Sonraki Aksiyon": "Eksik görüşmeleri tamamla", "Son Güncelleme Tarihi": "2026-07-18", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 79, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Görev ID": "TSK-007", "Proje ID": "PRJ-002", "Proje Adı": "CRM Sisteminin Yenilenmesi", "Görev Adı": "Veri taşıma ve doğrulama", "Görev Açıklaması": "Eski sistem verilerinin temizlenmesi ve yeni sisteme aktarılması.", "Görev Sahibi Departman": "Ürün Yönetimi", "Sorumlu Kişi": "Çalışan 4", "Destek Veren Kişiler": "Çalışan 7", "Başlangıç Tarihi": "2026-05-01", "Son Tarih": "2026-07-20", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Devam Ediyor", "Tamamlanma Oranı": 0.4, "Görev Ağırlığı": 5, "Öncelik": "Kritik", "Aciliyet": "Acil", "Bağımlı Olduğu Görev": "TSK-006", "Bağımlı Olduğu Departman": "Satış", "Beklenen Teslimat / Çıktı": "Doğrulanmış CRM veri seti", "Risk / Blokaj": "Mükerrer ve eksik kayıtlar", "Sonraki Aksiyon": "Hata listesini sahiplerine dağıt", "Son Güncelleme Tarihi": "2026-07-10", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 18, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": "Kritik gecikmiş ve güncelleme gerekli örneğidir."}, {"Görev ID": "TSK-008", "Proje ID": "PRJ-002", "Proje Adı": "CRM Sisteminin Yenilenmesi", "Görev Adı": "Kullanıcı kabul testleri", "Görev Açıklaması": "Ana kullanıcılarla kabul testlerinin yürütülmesi.", "Görev Sahibi Departman": "Risk ve Uyum", "Sorumlu Kişi": "Çalışan 6", "Destek Veren Kişiler": "Çalışan 4", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-30", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Başlanmadı", "Tamamlanma Oranı": 0, "Görev Ağırlığı": 2, "Öncelik": "Yüksek", "Aciliyet": "Acil", "Bağımlı Olduğu Görev": "TSK-007", "Bağımlı Olduğu Departman": "Ürün Yönetimi", "Beklenen Teslimat / Çıktı": "Onaylı test sonuçları", "Risk / Blokaj": "Veri taşıma tamamlanmadı", "Sonraki Aksiyon": "Test senaryolarını hazır tut", "Son Güncelleme Tarihi": "2026-07-08", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 8, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Görev ID": "TSK-009", "Proje ID": "PRJ-003", "Proje Adı": "Satış Kanalı Geliştirme Projesi", "Görev Adı": "Kanal fırsat analizi", "Görev Açıklaması": "Öncelikli satış kanallarının değerlendirilmesi.", "Görev Sahibi Departman": "Strateji", "Sorumlu Kişi": "Çalışan 1", "Destek Veren Kişiler": "Çalışan 5", "Başlangıç Tarihi": "2026-05-10", "Son Tarih": "2026-06-15", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Devam Ediyor", "Tamamlanma Oranı": 0.5, "Görev Ağırlığı": 2, "Öncelik": "Yüksek", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": null, "Bağımlı Olduğu Departman": "Satış", "Beklenen Teslimat / Çıktı": "Kanal önceliklendirme raporu", "Risk / Blokaj": "Karar bekleniyor", "Sonraki Aksiyon": "Yönetim kararını takip et", "Son Güncelleme Tarihi": "2026-07-20", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 53, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Görev ID": "TSK-010", "Proje ID": "PRJ-003", "Proje Adı": "Satış Kanalı Geliştirme Projesi", "Görev Adı": "Bayi pilot listesinin oluşturulması", "Görev Açıklaması": "Pilot için uygun bayi adaylarının belirlenmesi.", "Görev Sahibi Departman": "Satış", "Sorumlu Kişi": "Çalışan 5", "Destek Veren Kişiler": "Çalışan 3", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-08-08", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Beklemede", "Tamamlanma Oranı": 0, "Görev Ağırlığı": 3, "Öncelik": "Kritik", "Aciliyet": "Yakın", "Bağımlı Olduğu Görev": "TSK-009", "Bağımlı Olduğu Departman": "Strateji", "Beklenen Teslimat / Çıktı": "Onaylı pilot bayi listesi", "Risk / Blokaj": "Yönetim kararı bekleniyor", "Sonraki Aksiyon": "Karar sonrası adayları ara", "Son Güncelleme Tarihi": "2026-07-28", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": "Yaklaşan tarih örneğidir."}, {"Görev ID": "TSK-011", "Proje ID": "PRJ-003", "Proje Adı": "Satış Kanalı Geliştirme Projesi", "Görev Adı": "Kanal iletişim materyallerinin tasarımı", "Görev Açıklaması": "Bayi ve dijital kanal iletişim materyallerinin hazırlanması.", "Görev Sahibi Departman": "Pazarlama", "Sorumlu Kişi": "Çalışan 3", "Destek Veren Kişiler": "Çalışan 5", "Başlangıç Tarihi": "2026-07-15", "Son Tarih": "2026-08-15", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "Başlanmadı", "Tamamlanma Oranı": 0, "Görev Ağırlığı": 2, "Öncelik": "Orta", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": "TSK-010", "Bağımlı Olduğu Departman": "Satış", "Beklenen Teslimat / Çıktı": "Kanal tanıtım seti", "Risk / Blokaj": null, "Sonraki Aksiyon": "Tasarım brifini tamamla", "Son Güncelleme Tarihi": "2026-07-28", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-012", "Proje ID": "PRJ-003", "Proje Adı": "Satış Kanalı Geliştirme Projesi", "Görev Adı": "Alternatif kanal araştırması", "Görev Açıklaması": "İkincil kanal seçeneklerinin ön değerlendirmesi.", "Görev Sahibi Departman": "Ürün Yönetimi", "Sorumlu Kişi": "Çalışan 2", "Destek Veren Kişiler": null, "Başlangıç Tarihi": "2026-06-01", "Son Tarih": "2026-07-01", "Gerçek Tamamlanma Tarihi": null, "Görev Durumu": "İptal", "Tamamlanma Oranı": 0.3, "Görev Ağırlığı": 1, "Öncelik": "Düşük", "Aciliyet": "Düşük", "Bağımlı Olduğu Görev": null, "Bağımlı Olduğu Departman": null, "Beklenen Teslimat / Çıktı": "Araştırma notu", "Risk / Blokaj": "Öncelik değişti", "Sonraki Aksiyon": "Kayıtları arşivle", "Son Güncelleme Tarihi": "2026-06-20", "Gecikme Durumu": "İptal", "Gecikme Günü": null, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": "İptal edildiği için proje oranına dahil edilmez."}, {"Görev ID": "TSK-013", "Proje ID": "PRJ-004", "Proje Adı": "Yıllık Stratejik Planlama", "Görev Adı": "Stratejik hedeflerin belirlenmesi", "Görev Açıklaması": "2027 hedeflerinin yönetimle netleştirilmesi.", "Görev Sahibi Departman": "Strateji", "Sorumlu Kişi": "Çalışan 1", "Destek Veren Kişiler": "Çalışan 8", "Başlangıç Tarihi": "2026-04-01", "Son Tarih": "2026-04-30", "Gerçek Tamamlanma Tarihi": "2026-04-28", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 3, "Öncelik": "Yüksek", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": null, "Bağımlı Olduğu Departman": null, "Beklenen Teslimat / Çıktı": "Onaylı stratejik hedefler", "Risk / Blokaj": null, "Sonraki Aksiyon": "Departman hedeflerine dağıt", "Son Güncelleme Tarihi": "2026-04-28", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-014", "Proje ID": "PRJ-004", "Proje Adı": "Yıllık Stratejik Planlama", "Görev Adı": "Departman planlarının konsolidasyonu", "Görev Açıklaması": "Departman aksiyon planlarının ortak plana işlenmesi.", "Görev Sahibi Departman": "Muhasebe", "Sorumlu Kişi": "Çalışan 7", "Destek Veren Kişiler": "Çalışan 1", "Başlangıç Tarihi": "2026-05-01", "Son Tarih": "2026-05-31", "Gerçek Tamamlanma Tarihi": "2026-05-30", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 2, "Öncelik": "Orta", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": "TSK-013", "Bağımlı Olduğu Departman": "Tüm Departmanlar", "Beklenen Teslimat / Çıktı": "Konsolide aksiyon planı", "Risk / Blokaj": null, "Sonraki Aksiyon": "Bütçe bağlantılarını kontrol et", "Son Güncelleme Tarihi": "2026-05-30", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-015", "Proje ID": "PRJ-004", "Proje Adı": "Yıllık Stratejik Planlama", "Görev Adı": "Risk değerlendirme çalıştayı", "Görev Açıklaması": "Stratejik risklerin ve önlemlerin belirlenmesi.", "Görev Sahibi Departman": "Risk ve Uyum", "Sorumlu Kişi": "Çalışan 6", "Destek Veren Kişiler": "Çalışan 1", "Başlangıç Tarihi": "2026-05-15", "Son Tarih": "2026-06-10", "Gerçek Tamamlanma Tarihi": "2026-06-09", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 2, "Öncelik": "Orta", "Aciliyet": "Normal", "Bağımlı Olduğu Görev": "TSK-013", "Bağımlı Olduğu Departman": "Strateji", "Beklenen Teslimat / Çıktı": "Stratejik risk envanteri", "Risk / Blokaj": null, "Sonraki Aksiyon": "Riskleri planla ilişkilendir", "Son Güncelleme Tarihi": "2026-06-09", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Görev ID": "TSK-016", "Proje ID": "PRJ-004", "Proje Adı": "Yıllık Stratejik Planlama", "Görev Adı": "Yönetim kurulu sunumunun tamamlanması", "Görev Açıklaması": "Planın yönetim kurulu formatında sunulması.", "Görev Sahibi Departman": "Strateji", "Sorumlu Kişi": "Çalışan 1", "Destek Veren Kişiler": "Çalışan 7", "Başlangıç Tarihi": "2026-06-01", "Son Tarih": "2026-06-30", "Gerçek Tamamlanma Tarihi": "2026-06-28", "Görev Durumu": "Tamamlandı", "Tamamlanma Oranı": 1, "Görev Ağırlığı": 5, "Öncelik": "Kritik", "Aciliyet": "Acil", "Bağımlı Olduğu Görev": "TSK-014", "Bağımlı Olduğu Departman": "Muhasebe", "Beklenen Teslimat / Çıktı": "Onaylanmış stratejik plan", "Risk / Blokaj": null, "Sonraki Aksiyon": "Öğrenimleri arşivle", "Son Güncelleme Tarihi": "2026-06-28", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}], "departman_gorevleri": [{"Rutin Görev ID": "DEP-001", "Departman": "Strateji", "Görev Adı": "Haftalık yönetim raporu", "Görev Açıklaması": "Proje ve performans gündeminin yönetim için özetlenmesi.", "Görev Türü": "Raporlama", "Tekrarlama Periyodu": "Haftalık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-07", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.5, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Haftalık yönetim özeti", "Risk / Blokaj": null, "Sonraki Aksiyon": "KPI verilerini konsolide et", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-002", "Departman": "Strateji", "Görev Adı": "Sektör eğilimleri analizi", "Görev Açıklaması": "Öncelikli sektörlerde aylık gelişmelerin izlenmesi.", "Görev Türü": "Rutin", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-31", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.7, "Öncelik": "Orta", "Beklenen Teslimat / Çıktı": "Aylık sektör notu", "Risk / Blokaj": "Veri kaynağı gecikmesi", "Sonraki Aksiyon": "Eksik kaynakları tamamla", "Son Güncelleme Tarihi": "2026-07-10", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 7, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": "Güncelleme gerekli örneğidir."}, {"Rutin Görev ID": "DEP-003", "Departman": "Pazarlama", "Görev Adı": "Aylık içerik takvimi", "Görev Açıklaması": "Kurumsal kanalların içerik planının hazırlanması.", "Görev Türü": "Rutin", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-05", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.8, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Onaylı içerik takvimi", "Risk / Blokaj": null, "Sonraki Aksiyon": "Son onayları al", "Son Güncelleme Tarihi": "2026-08-02", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 2, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-004", "Departman": "Pazarlama", "Görev Adı": "Kampanya performans raporu", "Görev Açıklaması": "Aktif kampanyaların performansının raporlanması.", "Görev Türü": "Raporlama", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-28", "Gerçek Tamamlanma Tarihi": "2026-07-28", "Durum": "Tamamlandı", "Tamamlanma Oranı": 1, "Öncelik": "Orta", "Beklenen Teslimat / Çıktı": "Kampanya performans raporu", "Risk / Blokaj": null, "Sonraki Aksiyon": "Öğrenimleri sonraki plana aktar", "Son Güncelleme Tarihi": "2026-07-28", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-005", "Departman": "Satış", "Görev Adı": "Haftalık satış hattı toplantısı", "Görev Açıklaması": "Fırsat ve tekliflerin haftalık değerlendirilmesi.", "Görev Türü": "Toplantı", "Tekrarlama Periyodu": "Haftalık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-04", "Gerçek Tamamlanma Tarihi": null, "Durum": "Başlanmadı", "Tamamlanma Oranı": 0, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Güncel fırsat ve aksiyon listesi", "Risk / Blokaj": null, "Sonraki Aksiyon": "Toplantı gündemini paylaş", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 3, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-006", "Departman": "Satış", "Görev Adı": "Pasif müşteri geri kazanımı", "Görev Açıklaması": "Pasif müşteri listesinin aranması ve sonuçların kaydı.", "Görev Türü": "Operasyonel", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-25", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.4, "Öncelik": "Kritik", "Beklenen Teslimat / Çıktı": "Geri kazanım sonuç listesi", "Risk / Blokaj": "Eksik iletişim bilgileri", "Sonraki Aksiyon": "Veri düzeltme talebi aç", "Son Güncelleme Tarihi": "2026-07-12", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 13, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-007", "Departman": "Muhasebe", "Görev Adı": "Aylık kapanış kontrolü", "Görev Açıklaması": "Ay sonu muhasebe kapanış kontrol listesinin tamamlanması.", "Görev Türü": "Kontrol", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-06", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.6, "Öncelik": "Kritik", "Beklenen Teslimat / Çıktı": "Onaylı kapanış kontrol listesi", "Risk / Blokaj": null, "Sonraki Aksiyon": "Eksik fişleri tamamla", "Son Güncelleme Tarihi": "2026-08-02", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 1, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-008", "Departman": "Muhasebe", "Görev Adı": "Bütçe-gerçekleşen analizi", "Görev Açıklaması": "Aylık bütçe sapmalarının analiz edilmesi.", "Görev Türü": "Raporlama", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-31", "Gerçek Tamamlanma Tarihi": "2026-07-31", "Durum": "Tamamlandı", "Tamamlanma Oranı": 1, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Bütçe sapma raporu", "Risk / Blokaj": null, "Sonraki Aksiyon": "Yönetim notunu paylaş", "Son Güncelleme Tarihi": "2026-07-31", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-009", "Departman": "Risk ve Uyum", "Görev Adı": "Aylık mevzuat taraması", "Görev Açıklaması": "İlgili mevzuat değişikliklerinin izlenmesi.", "Görev Türü": "Yasal / Zorunlu", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-10", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.3, "Öncelik": "Kritik", "Beklenen Teslimat / Çıktı": "Mevzuat değişiklik notu", "Risk / Blokaj": null, "Sonraki Aksiyon": "Yeni düzenlemeleri sınıflandır", "Son Güncelleme Tarihi": "2026-08-01", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-010", "Departman": "Risk ve Uyum", "Görev Adı": "Kontrol bulguları takibi", "Görev Açıklaması": "Açık kontrol bulgularının kapanış takibi.", "Görev Türü": "Kontrol", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-20", "Gerçek Tamamlanma Tarihi": null, "Durum": "Beklemede", "Tamamlanma Oranı": 0.5, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Güncel bulgu takip listesi", "Risk / Blokaj": "Departman yanıtları bekleniyor", "Sonraki Aksiyon": "Yanıt bekleyen birimleri hatırlat", "Son Güncelleme Tarihi": "2026-07-15", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 18, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-011", "Departman": "İnsan Kaynakları", "Görev Adı": "Aylık izin planı kontrolü", "Görev Açıklaması": "Ekip izin planlarının iş sürekliliğine göre kontrolü.", "Görev Türü": "Kontrol", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-07", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.5, "Öncelik": "Orta", "Beklenen Teslimat / Çıktı": "Onaylı izin planı", "Risk / Blokaj": null, "Sonraki Aksiyon": "Çakışmaları yöneticilerle çöz", "Son Güncelleme Tarihi": "2026-08-02", "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-012", "Departman": "İnsan Kaynakları", "Görev Adı": "Yetkinlik gelişim planı", "Görev Açıklaması": "Yıllık eğitim ve gelişim ihtiyaçlarının güncellenmesi.", "Görev Türü": "Tek Seferlik", "Tekrarlama Periyodu": "Yıllık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-06-01", "Son Tarih": "2026-07-15", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.6, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Yetkinlik gelişim planı", "Risk / Blokaj": "Yönetici görüşleri eksik", "Sonraki Aksiyon": "Eksik görüşleri tamamla", "Son Güncelleme Tarihi": "2026-07-05", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 23, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-013", "Departman": "İdari İşler", "Görev Adı": "Araç kullanım planı", "Görev Açıklaması": "Şirket araçlarının haftalık rezervasyon planının hazırlanması.", "Görev Türü": "Operasyonel", "Tekrarlama Periyodu": "Haftalık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-04", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.8, "Öncelik": "Orta", "Beklenen Teslimat / Çıktı": "Çakışmasız araç planı", "Risk / Blokaj": null, "Sonraki Aksiyon": "Son talepleri plana işle", "Son Güncelleme Tarihi": "2026-08-02", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 3, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-014", "Departman": "İdari İşler", "Görev Adı": "Tedarikçi sözleşme kontrolü", "Görev Açıklaması": "Yaklaşan sözleşme bitişlerinin kontrol edilmesi.", "Görev Türü": "Kontrol", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-25", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.5, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Yenileme karar listesi", "Risk / Blokaj": "Tedarikçi teklifleri eksik", "Sonraki Aksiyon": "Alternatif teklifleri topla", "Son Güncelleme Tarihi": "2026-07-20", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 13, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-015", "Departman": "Ürün Yönetimi", "Görev Adı": "Ürün performans gözden geçirmesi", "Görev Açıklaması": "Ürün KPI ve müşteri geri bildirimlerinin değerlendirilmesi.", "Görev Türü": "Toplantı", "Tekrarlama Periyodu": "Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-01", "Son Tarih": "2026-08-06", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": 0.4, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": "Ürün aksiyon listesi", "Risk / Blokaj": null, "Sonraki Aksiyon": "KPI sapmalarını analiz et", "Son Güncelleme Tarihi": "2026-08-02", "Gecikme Durumu": "Gecikmiş", "Gecikme Günü": 1, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "DEP-016", "Departman": "Ürün Yönetimi", "Görev Adı": "Ürün geri bildirim havuzu temizliği", "Görev Açıklaması": "Mükerrer ve kapanmış geri bildirimlerin arşivlenmesi.", "Görev Türü": "Operasyonel", "Tekrarlama Periyodu": "Üç Aylık", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-07-01", "Son Tarih": "2026-07-30", "Gerçek Tamamlanma Tarihi": "2026-07-29", "Durum": "Tamamlandı", "Tamamlanma Oranı": 1, "Öncelik": "Düşük", "Beklenen Teslimat / Çıktı": "Güncel geri bildirim havuzu", "Risk / Blokaj": null, "Sonraki Aksiyon": "Yeni dönemi başlat", "Son Güncelleme Tarihi": "2026-07-29", "Gecikme Durumu": "Tamamlandı", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncel", "Açıklamalar": null}, {"Rutin Görev ID": "str-001", "Departman": "Strateji", "Görev Adı": "proje yönetim toolu bulmak", "Görev Açıklaması": null, "Görev Türü": "Tek Seferlik", "Tekrarlama Periyodu": "Tek Seferlik", "Sorumlu Kişi": "Enes Burak Taşan", "Destek Verenler": "Hasan Can Yılmaz", "Başlangıç Tarihi": "2026-08-07", "Son Tarih": "2026-08-15", "Gerçek Tamamlanma Tarihi": null, "Durum": "Devam Ediyor", "Tamamlanma Oranı": null, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": null, "Risk / Blokaj": null, "Sonraki Aksiyon": null, "Son Güncelleme Tarihi": null, "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}, {"Rutin Görev ID": "str-002", "Departman": "Strateji", "Görev Adı": "fizibilite raporu hazırlamak", "Görev Açıklaması": "safahat fizibilite", "Görev Türü": "Raporlama", "Tekrarlama Periyodu": "Tek Seferlik", "Sorumlu Kişi": "Ümit Arıkboğa", "Destek Verenler": "Hanife Atacan", "Başlangıç Tarihi": "2026-08-07", "Son Tarih": "2026-08-14", "Gerçek Tamamlanma Tarihi": null, "Durum": "Beklemede", "Tamamlanma Oranı": null, "Öncelik": "Yüksek", "Beklenen Teslimat / Çıktı": null, "Risk / Blokaj": null, "Sonraki Aksiyon": "yatırım komitesine gidecek", "Son Güncelleme Tarihi": null, "Gecikme Durumu": "Zamanında", "Gecikme Günü": 0, "Güncelleme Uyarısı": "Güncelleme Gerekli", "Açıklamalar": null}], "tanimlar": {"Departmanlar": ["Strateji", "Pazarlama", "Satış", "Muhasebe", "Risk ve Uyum", "İnsan Kaynakları", "İdari İşler", "Ürün Yönetimi"], "Proje Durumları": ["Planlandı", "Aktif", "Beklemede", "Tamamlandı", "İptal"], "Görev Durumları": ["Başlanmadı", "Devam Ediyor", "Beklemede", "Tamamlandı", "İptal"], "Öncelikler": ["Kritik", "Yüksek", "Orta", "Düşük"], "Sağlık Durumları": ["Yeşil", "Sarı", "Kırmızı"], "Görev Türleri": ["Rutin", "Tek Seferlik", "Operasyonel", "Raporlama", "Kontrol", "Toplantı", "Yasal / Zorunlu"], "Tekrarlama Periyotları": ["Günlük", "Haftalık", "Aylık", "Üç Aylık", "Altı Aylık", "Yıllık", "Tek Seferlik"], "Çalışanlar": ["Hasan Sami Bayansar", "Mehmet Can Çelik", "Aykut Erdim Tütüncü", "Bahar Söylemez Tosun", "Başak Mor", "Berk Bircan", "Berkay Yurttapan", "Betül Coşkuner", "Çağla Çiçek", "Eda Gören", "Elif Ebrar Sezgin", "Enes Burak Taşan", "Esat Öztemel", "Esra İnci", "Güneç Turan Koçağa", "Hanife Atacan", "Hasan Can Yılmaz", "Hülya Karakoç Kesgin", "Hüseyin Altındağ", "İclal Olgaç", "Meryem Erkılıç", "Mustafa Akkoyunlu", "Özge Yağmur Akbaş", "Sacide Büşra Yıldırım", "Serkan Aci", "Şule Taşkıran", "Tarık Ertekin", "Ümit Arıkboğa", "Zeynep Şakarcan"], "Aciliyet Seviyeleri": ["Acil", "Yakın", "Normal", "Düşük"], "Görev Ağırlıkları": [1, 2, 3, 5], "Açıklama": ["Küçük", "Çok Düşük", "Orta", "Düşük", "Büyük", "Orta", "Kritik Teslimat", "Yüksek", "Çok Yüksek"], "Risk Kategorileri": ["Finansal", "Operasyonel", "Teknolojik", "Hukuki", "Uyum", "İnsan Kaynakları", "Stratejik", "İtibar", "Tedarikçi", "Diğer"], "Olasılık / Etki": [1, 2, 3, 4, 5], "Risk Durumları": ["Açık", "İzleniyor", "Azaltıldı", "Kapatıldı", "Gerçekleşti"], "Karar Durumları": ["Bekliyor", "Değerlendiriliyor", "Karar Alındı", "İptal"]}};
+
+/* ---------- helpers ---------- */
+const CAT = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#4a3aa7','#e34948'];
+const isDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+const CAT_DARK = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+function catColor(i){ return (isDark()?CAT_DARK:CAT)[i % CAT.length]; }
+function fmtDate(s){ if(!s) return '—'; const d=new Date(s); return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'short',year:'numeric'}); }
+function pct(v){ return v==null ? '—' : Math.round(v*100)+'%'; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function healthColor(h){
+  if(h==='Yeşil') return 'good';
+  if(h==='Sarı') return 'warning';
+  if(h==='Kırmızı') return 'critical';
+  return 'muted';
+}
+function delayColor(g){
+  if(g==='Gecikmiş') return 'critical';
+  if(g==='Tamamlandı') return 'good';
+  if(g==='İptal') return 'muted';
+  return 'good';
+}
+function statusColor(s){
+  if(s==='Tamamlandı') return 'good';
+  if(s==='İptal') return 'muted';
+  if(['Kritik'].includes(s)) return 'critical';
+  return 'good';
+}
+function badge(text, kind){
+  return `<span class="badge ${kind}"><span class="dot" style="background:currentColor"></span>${esc(text)}</span>`;
+}
+function priorityKind(p){
+  if(p==='Kritik') return 'critical';
+  if(p==='Yüksek') return 'warning';
+  if(p==='Orta') return 'muted';
+  return 'muted';
+}
+
+/* ================= SUPABASE ================= */
+const SUPABASE_URL = 'https://bycmragppznokxsxzxst.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ5Y21yYWdwcHpub2t4c3h6eHN0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MjE2NzUsImV4cCI6MjEwMTk5NzY3NX0.i1KkkKjgWA_-BKF2YpDw92IyyQlRV2UG47bvI8LSc8k';
+let sb = null;
+try{
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}catch(e){ console.error('Supabase client oluşturulamadı', e); }
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+
+/* Türkçe alan adları <-> Supabase kolon adları eşleştirmesi */
+const PROJECT_MAP = {
+  'Proje ID':'proje_id','Proje Adı':'proje_adi','Proje Açıklaması':'proje_aciklamasi','Proje Sahibi':'proje_sahibi',
+  'Proje Yöneticisi':'proje_yoneticisi','Lider Departman':'lider_departman','Katılımcı Departmanlar':'katilimci_departmanlar',
+  'Başlangıç Tarihi':'baslangic_tarihi','Hedef Bitiş Tarihi':'hedef_bitis_tarihi','Gerçek Bitiş Tarihi':'gercek_bitis_tarihi',
+  'Proje Durumu':'proje_durumu','Öncelik':'oncelik','Tamamlanma Oranı':'tamamlanma_orani','Sağlık Durumu':'saglik_durumu',
+  'Sonraki Kilometre Taşı':'sonraki_kilometre_tasi','Risk / Blokaj':'risk_blokaj','Sonraki Aksiyon':'sonraki_aksiyon',
+  'Son Güncelleme Tarihi':'son_guncelleme_tarihi','Gecikme Durumu':'gecikme_durumu','Gecikme Günü':'gecikme_gunu','Açıklamalar':'aciklamalar'
+};
+const TASK_MAP = {
+  'Görev ID':'gorev_id','Proje ID':'proje_id','Proje Adı':'proje_adi','Görev Adı':'gorev_adi','Görev Açıklaması':'gorev_aciklamasi',
+  'Görev Sahibi Departman':'gorev_sahibi_departman','Sorumlu Kişi':'sorumlu_kisi','Destek Veren Kişiler':'destek_veren_kisiler',
+  'Başlangıç Tarihi':'baslangic_tarihi','Son Tarih':'son_tarih','Gerçek Tamamlanma Tarihi':'gercek_tamamlanma_tarihi',
+  'Görev Durumu':'gorev_durumu','Tamamlanma Oranı':'tamamlanma_orani','Görev Ağırlığı':'gorev_agirligi','Öncelik':'oncelik',
+  'Aciliyet':'aciliyet','Bağımlı Olduğu Görev':'bagli_oldugu_gorev','Bağımlı Olduğu Departman':'bagli_oldugu_departman',
+  'Beklenen Teslimat / Çıktı':'beklenen_teslimat','Risk / Blokaj':'risk_blokaj','Sonraki Aksiyon':'sonraki_aksiyon',
+  'Son Güncelleme Tarihi':'son_guncelleme_tarihi','Gecikme Durumu':'gecikme_durumu','Gecikme Günü':'gecikme_gunu',
+  'Güncelleme Uyarısı':'guncelleme_uyarisi','Açıklamalar':'aciklamalar'
+};
+const DEPT_MAP = {
+  'Rutin Görev ID':'rutin_gorev_id','Departman':'departman','Görev Adı':'gorev_adi','Görev Açıklaması':'gorev_aciklamasi',
+  'Görev Türü':'gorev_turu','Tekrarlama Periyodu':'tekrarlama_periyodu','Sorumlu Kişi':'sorumlu_kisi','Destek Verenler':'destek_verenler',
+  'Başlangıç Tarihi':'baslangic_tarihi','Son Tarih':'son_tarih','Gerçek Tamamlanma Tarihi':'gercek_tamamlanma_tarihi',
+  'Durum':'durum','Tamamlanma Oranı':'tamamlanma_orani','Öncelik':'oncelik','Beklenen Teslimat / Çıktı':'beklenen_teslimat',
+  'Risk / Blokaj':'risk_blokaj','Sonraki Aksiyon':'sonraki_aksiyon','Son Güncelleme Tarihi':'son_guncelleme_tarihi',
+  'Gecikme Durumu':'gecikme_durumu','Gecikme Günü':'gecikme_gunu','Güncelleme Uyarısı':'guncelleme_uyarisi','Açıklamalar':'aciklamalar'
+};
+const SUBTASK_MAP = {
+  'Alt Görev ID':'alt_gorev_id','Görev ID':'gorev_id','Alt Görev Adı':'alt_gorev_adi','Açıklama':'aciklama',
+  'Sorumlu Kişi':'sorumlu_kisi','Başlangıç Tarihi':'baslangic_tarihi','Son Tarih':'son_tarih','Durum':'durum',
+  'Tamamlanma Oranı':'tamamlanma_orani','Öncelik':'oncelik'
+};
+const STAKEHOLDER_MAP = {
+  'Paydaş ID':'paydas_id','Proje ID':'proje_id','Ad Soyad':'ad_soyad','Rol':'rol','Kurum':'kurum',
+  'Telefon':'telefon','E-posta':'eposta','Notlar':'notlar'
+};
+const APPROVAL_MAP = {
+  'Kayıt ID':'kayit_id','Tür':'tur','Başlık':'baslik','Açıklama':'aciklama','Öncelik':'oncelik','Tamamlandı':'tamamlandi',
+  'İlgili Proje ID':'ilgili_proje_id','Sorumlu Kişi':'sorumlu_kisi','Son Tarih':'son_tarih','Oluşturma Tarihi':'olusturma_tarihi'
+};
+function rowToObj(row, map){
+  const out = {};
+  for(const [tr, col] of Object.entries(map)) out[tr] = row[col];
+  return out;
+}
+function objToRow(obj, map, skipKeys){
+  const out = {};
+  for(const [tr, col] of Object.entries(map)){
+    if(skipKeys && skipKeys.includes(col)) continue;
+    if(obj[tr]!==undefined) out[col] = obj[tr];
+  }
+  return out;
+}
+function setDbStatus(ok, err){
+  const el = document.getElementById('dbStatusNote');
+  if(ok){
+    el.className='session-note ok';
+    el.textContent = '🟢 Bağlı — yaptığın her ekleme/düzenleme/silme Supabase veritabanına kalıcı olarak kaydediliyor. Giriş sistemi henüz yok, dosyaya erişen herkes düzenleyebilir.';
+  } else {
+    el.className='session-note error';
+    el.textContent = '🔴 Veritabanına bağlanılamadı, geçici örnek verilerle gösteriliyor (kaydedilmez). Tabloların Supabase\'de kurulduğundan emin ol. Hata: '+(err&&err.message?err.message:'bilinmiyor');
+  }
+}
+async function loadAllData(){
+  try{
+    const [pr, pt, dt, st, sh, ar] = await Promise.all([
+      sb.from('projects').select('*').order('proje_id'),
+      sb.from('project_tasks').select('*').order('gorev_id'),
+      sb.from('department_tasks').select('*').order('rutin_gorev_id'),
+      sb.from('subtasks').select('*').order('alt_gorev_id'),
+      sb.from('project_stakeholders').select('*').order('paydas_id'),
+      sb.from('approvals_reminders').select('*').order('kayit_id'),
+    ]);
+    if(pr.error) throw pr.error;
+    if(pt.error) throw pt.error;
+    if(dt.error) throw dt.error;
+    projects = pr.data.map(r=>rowToObj(r, PROJECT_MAP));
+    projectTasks = pt.data.map(r=>rowToObj(r, TASK_MAP));
+    deptTasks = dt.data.map(r=>rowToObj(r, DEPT_MAP));
+    // Ek tablolar (subtasks/paydaşlar/onay-hatırlatma) henüz kurulmamış olabilir —
+    // bunlar hata verirse ana veriyi bozmadan sadece bu üçünü boş bırak.
+    subtasks = st.error ? [] : st.data.map(r=>rowToObj(r, SUBTASK_MAP));
+    stakeholders = sh.error ? [] : sh.data.map(r=>rowToObj(r, STAKEHOLDER_MAP));
+    approvalsReminders = ar.error ? [] : ar.data.map(r=>rowToObj(r, APPROVAL_MAP));
+    if(st.error||sh.error||ar.error) console.warn('Ek tablolar (subtasks/project_stakeholders/approvals_reminders) henüz kurulmamış olabilir. supabase_ek_tablolar.sql dosyasını çalıştır.', st.error||sh.error||ar.error);
+    setDbStatus(true);
+  }catch(err){
+    console.error('Supabase load error', err);
+    projects = DATA.projeler||[]; projectTasks = DATA.proje_gorevleri||[]; deptTasks = DATA.departman_gorevleri||[];
+    subtasks = []; stakeholders = []; approvalsReminders = [];
+    setDbStatus(false, err);
+  }
+}
+
+let projects = [];
+let projectTasks = [];
+let deptTasks = [];
+let subtasks = [];
+let stakeholders = [];
+let approvalsReminders = [];
+const departments = DATA.tanimlar['Departmanlar'];
+
+document.getElementById('todayLabel').textContent = new Date().toLocaleDateString('tr-TR',{day:'2-digit',month:'long',year:'numeric'});
+
+/* ================= EMPLOYEES (for person pickers) ================= */
+function splitNames(s){ return (s||'').split(',').map(x=>x.trim()).filter(Boolean); }
+function buildEmployeeList(){
+  const set = new Set(DATA.tanimlar['Çalışanlar']||[]);
+  projects.forEach(p=>{ [p['Proje Sahibi'],p['Proje Yöneticisi']].forEach(n=>n&&set.add(n)); });
+  projectTasks.forEach(t=>{ if(t['Sorumlu Kişi']) set.add(t['Sorumlu Kişi']); splitNames(t['Destek Veren Kişiler']).forEach(n=>set.add(n)); });
+  deptTasks.forEach(t=>{ if(t['Sorumlu Kişi']) set.add(t['Sorumlu Kişi']); splitNames(t['Destek Verenler']).forEach(n=>set.add(n)); });
+  return Array.from(set).sort((a,b)=>a.localeCompare(b,'tr'));
+}
+function refreshEmployeeDatalist(){
+  const list = buildEmployeeList();
+  const dl = document.getElementById('employeeOptions');
+  dl.innerHTML = list.map(n=>`<option value="${esc(n)}"></option>`).join('');
+}
+
+/* ================= ID GENERATION ================= */
+function nextId(list, idKey, prefix, width){
+  let max = 0;
+  list.forEach(item=>{
+    const id = item[idKey];
+    if(typeof id === 'string'){
+      const m = id.match(/(\d+)\s*$/);
+      if(m){ const n = parseInt(m[1],10); if(!isNaN(n) && n>max) max = n; }
+    }
+  });
+  return prefix + '-' + String(max+1).padStart(width||3,'0');
+}
+
+/* ================= GENERIC MODAL / FORM ================= */
+const modalOverlay = document.getElementById('modalOverlay');
+const modalFormEl = document.getElementById('modalForm');
+let currentModal = null; // {fields, onSave, onDelete}
+
+function fieldInputHtml(f, value){
+  const val = value==null ? '' : value;
+  if(f.type==='project'){
+    const opts = [{value:'', label:'— Yok —'}, ...projects.map(p=>({value:p['Proje ID'], label:p['Proje Adı']}))];
+    return `<select id="mf-${f.key}">${opts.map(o=>`<option value="${esc(o.value)}" ${String(o.value)===String(val)?'selected':''}>${esc(o.label)}</option>`).join('')}</select>`;
+  }
+  if(f.type==='select'){
+    return `<select id="mf-${f.key}">${(f.options||[]).map(o=>`<option value="${esc(o)}" ${String(o)===String(val)?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  }
+  if(f.type==='textarea'){
+    return `<textarea id="mf-${f.key}" placeholder="${esc(f.placeholder||'')}">${esc(val)}</textarea>`;
+  }
+  if(f.type==='person'){
+    return `<input id="mf-${f.key}" type="text" list="employeeOptions" value="${esc(val)}" placeholder="${esc(f.placeholder||'İsim seçin veya yazın')}">`;
+  }
+  if(f.type==='date'){
+    return `<input id="mf-${f.key}" type="date" value="${esc(val)}">`;
+  }
+  if(f.type==='number'){
+    const displayVal = f.displayTransform ? f.displayTransform(value) : val;
+    return `<input id="mf-${f.key}" type="number" min="${f.min!=null?f.min:''}" max="${f.max!=null?f.max:''}" value="${displayVal==null?'':displayVal}">`;
+  }
+  return `<input id="mf-${f.key}" type="text" value="${esc(val)}" placeholder="${esc(f.placeholder||'')}">`;
+}
+
+function openModal(title, fields, values, onSave, onDelete){
+  document.getElementById('modalTitle').textContent = title;
+  modalFormEl.innerHTML = fields.map(f=>`
+    <div class="form-field ${f.full?'full':''}">
+      <label>${esc(f.label)}${f.required?' *':''}</label>
+      ${fieldInputHtml(f, values ? values[f.key] : null)}
+    </div>`).join('');
+  currentModal = { fields, onSave, onDelete };
+  document.getElementById('modalDelete').style.display = onDelete ? '' : 'none';
+  refreshEmployeeDatalist();
+  modalOverlay.classList.add('open');
+}
+function closeModal(){ modalOverlay.classList.remove('open'); currentModal=null; }
+document.getElementById('modalX').onclick = closeModal;
+document.getElementById('modalCancel').onclick = closeModal;
+modalOverlay.addEventListener('click', e=>{ if(e.target===modalOverlay) closeModal(); });
+const modalSaveBtn = document.getElementById('modalSave');
+const modalDeleteBtn = document.getElementById('modalDelete');
+modalSaveBtn.onclick = async ()=>{
+  if(!currentModal) return;
+  const out = {};
+  for(const f of currentModal.fields){
+    const el = document.getElementById('mf-'+f.key);
+    let v = el.value;
+    if(f.type==='number'){
+      v = v===''? null : Number(v);
+      if(f.transform && v!=null) v = f.transform(v);
+    }
+    if(f.required && (v===''||v==null)){ el.focus(); return; }
+    out[f.key] = v===''? null : v;
+  }
+  const savedLabel = modalSaveBtn.textContent;
+  modalSaveBtn.textContent = 'Kaydediliyor…'; modalSaveBtn.disabled = true;
+  try{
+    const result = await currentModal.onSave(out);
+    if(result!==false) closeModal();
+  } catch(e){
+    dbErrorAlert('İşlem', e);
+  } finally {
+    modalSaveBtn.textContent = savedLabel; modalSaveBtn.disabled = false;
+  }
+};
+modalDeleteBtn.onclick = async ()=>{
+  if(currentModal && currentModal.onDelete){
+    if(confirm('Bu kaydı silmek istediğine emin misin? Bu işlem veritabanından da kalıcı olarak silecek.')){
+      modalDeleteBtn.textContent = 'Siliniyor…'; modalDeleteBtn.disabled = true;
+      try{
+        const result = await currentModal.onDelete();
+        if(result!==false) closeModal();
+      } catch(e){
+        dbErrorAlert('Silme işlemi', e);
+      } finally {
+        modalDeleteBtn.textContent = 'Sil'; modalDeleteBtn.disabled = false;
+      }
+    }
+  }
+};
+
+/* ================= FIELD DEFINITIONS ================= */
+const T = DATA.tanimlar;
+function projectFields(){
+  return [
+    {key:'Proje Adı', label:'Proje Adı', type:'text', required:true, full:true},
+    {key:'Proje Açıklaması', label:'Açıklama', type:'textarea', full:true},
+    {key:'Proje Sahibi', label:'Proje Sahibi', type:'person'},
+    {key:'Proje Yöneticisi', label:'Proje Yöneticisi', type:'person'},
+    {key:'Lider Departman', label:'Lider Departman', type:'select', options:departments},
+    {key:'Katılımcı Departmanlar', label:'Katılımcı Departmanlar', type:'text', placeholder:'virgülle ayırın'},
+    {key:'Başlangıç Tarihi', label:'Başlangıç Tarihi', type:'date'},
+    {key:'Hedef Bitiş Tarihi', label:'Hedef Bitiş Tarihi', type:'date'},
+    {key:'Proje Durumu', label:'Proje Durumu', type:'select', options:T['Proje Durumları']},
+    {key:'Öncelik', label:'Öncelik', type:'select', options:T['Öncelikler']},
+    {key:'Sağlık Durumu', label:'Sağlık Durumu', type:'select', options:T['Sağlık Durumları']},
+    {key:'Tamamlanma Oranı', label:'Tamamlanma Oranı (%)', type:'number', min:0, max:100,
+      transform:v=>v/100, displayTransform:v=>v==null?null:Math.round(v*100)},
+    {key:'Sonraki Kilometre Taşı', label:'Sonraki Kilometre Taşı', type:'text', full:true},
+    {key:'Risk / Blokaj', label:'Risk / Blokaj', type:'text', full:true},
+    {key:'Sonraki Aksiyon', label:'Sonraki Aksiyon', type:'text', full:true},
+  ];
+}
+function projectTaskFields(projectId){
+  return [
+    {key:'Görev Adı', label:'Görev Adı', type:'text', required:true, full:true},
+    {key:'Görev Açıklaması', label:'Açıklama', type:'textarea', full:true},
+    {key:'Görev Sahibi Departman', label:'Görev Sahibi Departman', type:'select', options:departments},
+    {key:'Sorumlu Kişi', label:'Sorumlu Kişi', type:'person'},
+    {key:'Destek Veren Kişiler', label:'Destek Veren Kişiler', type:'text', placeholder:'virgülle ayırın'},
+    {key:'Başlangıç Tarihi', label:'Başlangıç Tarihi', type:'date'},
+    {key:'Son Tarih', label:'Son Tarih', type:'date'},
+    {key:'Görev Durumu', label:'Görev Durumu', type:'select', options:T['Görev Durumları']},
+    {key:'Tamamlanma Oranı', label:'Tamamlanma Oranı (%)', type:'number', min:0, max:100,
+      transform:v=>v/100, displayTransform:v=>v==null?null:Math.round(v*100)},
+    {key:'Görev Ağırlığı', label:'Görev Ağırlığı', type:'select', options:T['Görev Ağırlıkları']},
+    {key:'Öncelik', label:'Öncelik', type:'select', options:T['Öncelikler']},
+    {key:'Aciliyet', label:'Aciliyet', type:'select', options:T['Aciliyet Seviyeleri']},
+    {key:'Bağımlı Olduğu Görev', label:'Bağımlı Olduğu Görev (ID)', type:'text'},
+    {key:'Beklenen Teslimat / Çıktı', label:'Beklenen Teslimat / Çıktı', type:'text', full:true},
+    {key:'Risk / Blokaj', label:'Risk / Blokaj', type:'text', full:true},
+    {key:'Sonraki Aksiyon', label:'Sonraki Aksiyon', type:'text', full:true},
+  ];
+}
+function deptTaskFields(){
+  return [
+    {key:'Departman', label:'Departman', type:'select', options:departments},
+    {key:'Görev Adı', label:'Görev Adı', type:'text', required:true, full:true},
+    {key:'Görev Açıklaması', label:'Açıklama', type:'textarea', full:true},
+    {key:'Görev Türü', label:'Görev Türü', type:'select', options:T['Görev Türleri']},
+    {key:'Tekrarlama Periyodu', label:'Tekrarlama Periyodu', type:'select', options:T['Tekrarlama Periyotları']},
+    {key:'Sorumlu Kişi', label:'Sorumlu Kişi', type:'person'},
+    {key:'Destek Verenler', label:'Destek Verenler', type:'text', placeholder:'virgülle ayırın'},
+    {key:'Başlangıç Tarihi', label:'Başlangıç Tarihi', type:'date'},
+    {key:'Son Tarih', label:'Son Tarih', type:'date'},
+    {key:'Durum', label:'Durum', type:'select', options:T['Görev Durumları']},
+    {key:'Tamamlanma Oranı', label:'Tamamlanma Oranı (%)', type:'number', min:0, max:100,
+      transform:v=>v/100, displayTransform:v=>v==null?null:Math.round(v*100)},
+    {key:'Öncelik', label:'Öncelik', type:'select', options:T['Öncelikler']},
+    {key:'Beklenen Teslimat / Çıktı', label:'Beklenen Teslimat / Çıktı', type:'text', full:true},
+    {key:'Risk / Blokaj', label:'Risk / Blokaj', type:'text', full:true},
+    {key:'Sonraki Aksiyon', label:'Sonraki Aksiyon', type:'text', full:true},
+  ];
+}
+
+function subtaskFields(){
+  return [
+    {key:'Alt Görev Adı', label:'Alt Görev Adı', type:'text', required:true, full:true},
+    {key:'Açıklama', label:'Açıklama', type:'textarea', full:true},
+    {key:'Sorumlu Kişi', label:'Sorumlu Kişi', type:'person'},
+    {key:'Başlangıç Tarihi', label:'Başlangıç Tarihi', type:'date'},
+    {key:'Son Tarih', label:'Son Tarih', type:'date'},
+    {key:'Durum', label:'Durum', type:'select', options:T['Görev Durumları']},
+    {key:'Tamamlanma Oranı', label:'Tamamlanma Oranı (%)', type:'number', min:0, max:100,
+      transform:v=>v/100, displayTransform:v=>v==null?null:Math.round(v*100)},
+    {key:'Öncelik', label:'Öncelik', type:'select', options:T['Öncelikler']},
+  ];
+}
+function stakeholderFields(){
+  return [
+    {key:'Ad Soyad', label:'Ad Soyad', type:'text', required:true, full:true},
+    {key:'Rol', label:'Rol', type:'text', placeholder:'Örn. Yatırımcı, Danışman, Müşteri'},
+    {key:'Kurum', label:'Kurum / Şirket', type:'text'},
+    {key:'Telefon', label:'Telefon', type:'text'},
+    {key:'E-posta', label:'E-posta', type:'text'},
+    {key:'Notlar', label:'Notlar', type:'textarea', full:true},
+  ];
+}
+function approvalFields(){
+  return [
+    {key:'Başlık', label:'Başlık', type:'text', required:true, full:true},
+    {key:'Açıklama', label:'Açıklama', type:'textarea', full:true},
+    {key:'Öncelik', label:'Öncelik', type:'select', options:T['Öncelikler']},
+    {key:'İlgili Proje ID', label:'İlgili Proje (varsa)', type:'project'},
+    {key:'Sorumlu Kişi', label:'Sorumlu / Takip Eden', type:'person'},
+    {key:'Son Tarih', label:'Son Tarih', type:'date'},
+  ];
+}
+
+/* ================= CRUD ACTIONS ================= */
+function deriveDelay(dueDate, status, doneDate){
+  if(status==='Tamamlandı') return {durum:'Tamamlandı', gun:0};
+  if(status==='İptal') return {durum:'İptal', gun:null};
+  if(!dueDate) return {durum:'Zamanında', gun:0};
+  const due = new Date(dueDate); const now = new Date();
+  const diff = Math.round((now-due)/86400000);
+  return diff>0 ? {durum:'Gecikmiş', gun:diff} : {durum:'Zamanında', gun:0};
+}
+
+function dbErrorAlert(action, error){
+  alert((action)+' başarısız oldu:\n\n'+(error&&error.message?error.message:error)+'\n\nSupabase tablolarının doğru kurulduğundan emin ol.');
+}
+
+function openAddProjectModal(){
+  openModal('Yeni Proje Ekle', projectFields(), {}, async (vals)=>{
+    const id = nextId(projects, 'Proje ID', 'PRJ');
+    const delay = deriveDelay(vals['Hedef Bitiş Tarihi'], vals['Proje Durumu']);
+    const obj = { 'Proje ID': id, 'Gerçek Bitiş Tarihi': null, 'Son Güncelleme Tarihi': todayISO(),
+      'Gecikme Durumu': delay.durum, 'Gecikme Günü': delay.gun, 'Açıklamalar': null, ...vals };
+    const { data, error } = await sb.from('projects').insert(objToRow(obj, PROJECT_MAP)).select().single();
+    if(error){ dbErrorAlert('Proje eklenemedi', error); return false; }
+    projects.push(rowToObj(data, PROJECT_MAP));
+    refreshAll();
+  });
+}
+function openEditProjectModal(id){
+  const p = projects.find(x=>x['Proje ID']===id);
+  openModal('Projeyi Düzenle · '+id, projectFields(), p, async (vals)=>{
+    const merged = { ...p, ...vals };
+    const delay = deriveDelay(merged['Hedef Bitiş Tarihi'], merged['Proje Durumu']);
+    merged['Gecikme Durumu']=delay.durum; merged['Gecikme Günü']=delay.gun;
+    merged['Son Güncelleme Tarihi'] = todayISO();
+    const row = objToRow(merged, PROJECT_MAP, ['proje_id']);
+    const { data, error } = await sb.from('projects').update(row).eq('proje_id', id).select().single();
+    if(error){ dbErrorAlert('Proje güncellenemedi', error); return false; }
+    Object.assign(p, rowToObj(data, PROJECT_MAP));
+    refreshAll();
+  }, async ()=>{
+    const { error } = await sb.from('projects').delete().eq('proje_id', id);
+    if(error){ dbErrorAlert('Proje silinemedi', error); return false; }
+    projects = projects.filter(x=>x['Proje ID']!==id);
+    projectTasks = projectTasks.filter(x=>x['Proje ID']!==id);
+    refreshAll();
+  });
+}
+function openAddTaskModal(projectId){
+  openModal('Yeni Görev Ekle', projectTaskFields(projectId), {}, async (vals)=>{
+    const id = nextId(projectTasks, 'Görev ID', 'TSK');
+    const proj = projects.find(p=>p['Proje ID']===projectId);
+    const delay = deriveDelay(vals['Son Tarih'], vals['Görev Durumu']);
+    const obj = { 'Görev ID': id, 'Proje ID': projectId, 'Proje Adı': proj?proj['Proje Adı']:'',
+      'Gerçek Tamamlanma Tarihi': null, 'Bağımlı Olduğu Departman': null,
+      'Son Güncelleme Tarihi': todayISO(),
+      'Gecikme Durumu': delay.durum, 'Gecikme Günü': delay.gun, 'Güncelleme Uyarısı':'Güncel', 'Açıklamalar': null, ...vals };
+    const { data, error } = await sb.from('project_tasks').insert(objToRow(obj, TASK_MAP)).select().single();
+    if(error){ dbErrorAlert('Görev eklenemedi', error); return false; }
+    projectTasks.push(rowToObj(data, TASK_MAP));
+    refreshAll();
+  });
+}
+function openEditTaskModal(taskId){
+  const t = projectTasks.find(x=>x['Görev ID']===taskId);
+  openModal('Görevi Düzenle · '+taskId, projectTaskFields(t['Proje ID']), t, async (vals)=>{
+    const merged = { ...t, ...vals };
+    const delay = deriveDelay(merged['Son Tarih'], merged['Görev Durumu']);
+    merged['Gecikme Durumu']=delay.durum; merged['Gecikme Günü']=delay.gun;
+    merged['Son Güncelleme Tarihi'] = todayISO();
+    const row = objToRow(merged, TASK_MAP, ['gorev_id']);
+    const { data, error } = await sb.from('project_tasks').update(row).eq('gorev_id', taskId).select().single();
+    if(error){ dbErrorAlert('Görev güncellenemedi', error); return false; }
+    Object.assign(t, rowToObj(data, TASK_MAP));
+    refreshAll();
+  }, async ()=>{
+    const { error } = await sb.from('project_tasks').delete().eq('gorev_id', taskId);
+    if(error){ dbErrorAlert('Görev silinemedi', error); return false; }
+    projectTasks = projectTasks.filter(x=>x['Görev ID']!==taskId);
+    refreshAll();
+  });
+}
+function openAddDeptTaskModal(dept){
+  openModal('Yeni Departman Görevi Ekle', deptTaskFields(), {Departman: dept}, async (vals)=>{
+    const id = nextId(deptTasks, 'Rutin Görev ID', 'DEP');
+    const delay = deriveDelay(vals['Son Tarih'], vals['Durum']);
+    const obj = { 'Rutin Görev ID': id, 'Gerçek Tamamlanma Tarihi': null,
+      'Son Güncelleme Tarihi': todayISO(),
+      'Gecikme Durumu': delay.durum, 'Gecikme Günü': delay.gun, 'Güncelleme Uyarısı':'Güncel', 'Açıklamalar': null, ...vals };
+    const { data, error } = await sb.from('department_tasks').insert(objToRow(obj, DEPT_MAP)).select().single();
+    if(error){ dbErrorAlert('Departman görevi eklenemedi', error); return false; }
+    deptTasks.push(rowToObj(data, DEPT_MAP));
+    refreshAll();
+  });
+}
+function openEditDeptTaskModal(taskId){
+  const t = deptTasks.find(x=>x['Rutin Görev ID']===taskId);
+  openModal('Departman Görevini Düzenle · '+taskId, deptTaskFields(), t, async (vals)=>{
+    const merged = { ...t, ...vals };
+    const delay = deriveDelay(merged['Son Tarih'], merged['Durum']);
+    merged['Gecikme Durumu']=delay.durum; merged['Gecikme Günü']=delay.gun;
+    merged['Son Güncelleme Tarihi'] = todayISO();
+    const row = objToRow(merged, DEPT_MAP, ['rutin_gorev_id']);
+    const { data, error } = await sb.from('department_tasks').update(row).eq('rutin_gorev_id', taskId).select().single();
+    if(error){ dbErrorAlert('Departman görevi güncellenemedi', error); return false; }
+    Object.assign(t, rowToObj(data, DEPT_MAP));
+    refreshAll();
+  }, async ()=>{
+    const { error } = await sb.from('department_tasks').delete().eq('rutin_gorev_id', taskId);
+    if(error){ dbErrorAlert('Departman görevi silinemedi', error); return false; }
+    deptTasks = deptTasks.filter(x=>x['Rutin Görev ID']!==taskId);
+    refreshAll();
+  });
+}
+
+/* ---------- alt görevler (subtasks) ---------- */
+function openAddSubtaskModal(taskId){
+  openModal('Yeni Alt Görev Ekle', subtaskFields(), {}, async (vals)=>{
+    const id = nextId(subtasks, 'Alt Görev ID', 'SUB');
+    const t = projectTasks.find(x=>x['Görev ID']===taskId);
+    const delay = deriveDelay(vals['Son Tarih'], vals['Durum']);
+    const obj = { 'Alt Görev ID': id, 'Görev ID': taskId, ...vals };
+    const { data, error } = await sb.from('subtasks').insert(objToRow(obj, SUBTASK_MAP)).select().single();
+    if(error){ dbErrorAlert('Alt görev eklenemedi', error); return false; }
+    subtasks.push(rowToObj(data, SUBTASK_MAP));
+    refreshAll();
+  });
+}
+function openEditSubtaskModal(subId){
+  const s = subtasks.find(x=>x['Alt Görev ID']===subId);
+  openModal('Alt Görevi Düzenle · '+subId, subtaskFields(), s, async (vals)=>{
+    const merged = { ...s, ...vals };
+    const row = objToRow(merged, SUBTASK_MAP, ['alt_gorev_id']);
+    const { data, error } = await sb.from('subtasks').update(row).eq('alt_gorev_id', subId).select().single();
+    if(error){ dbErrorAlert('Alt görev güncellenemedi', error); return false; }
+    Object.assign(s, rowToObj(data, SUBTASK_MAP));
+    refreshAll();
+  }, async ()=>{
+    const { error } = await sb.from('subtasks').delete().eq('alt_gorev_id', subId);
+    if(error){ dbErrorAlert('Alt görev silinemedi', error); return false; }
+    subtasks = subtasks.filter(x=>x['Alt Görev ID']!==subId);
+    refreshAll();
+  });
+}
+async function updateSubtaskDates(subId, startISO, endISO){
+  const s = subtasks.find(x=>x['Alt Görev ID']===subId);
+  if(!s) return;
+  try{
+    const { data, error } = await sb.from('subtasks').update({baslangic_tarihi:startISO, son_tarih:endISO}).eq('alt_gorev_id', subId).select().single();
+    if(error){ dbErrorAlert('Alt görev tarihi güncellenemedi', error); return; }
+    Object.assign(s, rowToObj(data, SUBTASK_MAP));
+  }catch(e){ dbErrorAlert('Alt görev tarihi güncellenemedi', e); }
+}
+async function updateTaskDates(taskId, startISO, endISO){
+  const t = projectTasks.find(x=>x['Görev ID']===taskId);
+  if(!t) return;
+  try{
+    const { data, error } = await sb.from('project_tasks').update({baslangic_tarihi:startISO, son_tarih:endISO}).eq('gorev_id', taskId).select().single();
+    if(error){ dbErrorAlert('Görev tarihi güncellenemedi', error); return; }
+    Object.assign(t, rowToObj(data, TASK_MAP));
+  }catch(e){ dbErrorAlert('Görev tarihi güncellenemedi', e); }
+}
+
+/* ---------- proje paydaşları (stakeholders) ---------- */
+function openAddStakeholderModal(projectId){
+  openModal('Yeni Paydaş Ekle', stakeholderFields(), {}, async (vals)=>{
+    const id = nextId(stakeholders, 'Paydaş ID', 'PYD');
+    const obj = { 'Paydaş ID': id, 'Proje ID': projectId, ...vals };
+    const { data, error } = await sb.from('project_stakeholders').insert(objToRow(obj, STAKEHOLDER_MAP)).select().single();
+    if(error){ dbErrorAlert('Paydaş eklenemedi', error); return false; }
+    stakeholders.push(rowToObj(data, STAKEHOLDER_MAP));
+    refreshAll();
+  });
+}
+function openEditStakeholderModal(stakeId){
+  const s = stakeholders.find(x=>x['Paydaş ID']===stakeId);
+  openModal('Paydaşı Düzenle · '+stakeId, stakeholderFields(), s, async (vals)=>{
+    const merged = { ...s, ...vals };
+    const row = objToRow(merged, STAKEHOLDER_MAP, ['paydas_id']);
+    const { data, error } = await sb.from('project_stakeholders').update(row).eq('paydas_id', stakeId).select().single();
+    if(error){ dbErrorAlert('Paydaş güncellenemedi', error); return false; }
+    Object.assign(s, rowToObj(data, STAKEHOLDER_MAP));
+    refreshAll();
+  }, async ()=>{
+    const { error } = await sb.from('project_stakeholders').delete().eq('paydas_id', stakeId);
+    if(error){ dbErrorAlert('Paydaş silinemedi', error); return false; }
+    stakeholders = stakeholders.filter(x=>x['Paydaş ID']!==stakeId);
+    refreshAll();
+  });
+}
+
+/* ---------- onay & hatırlatma ---------- */
+function openAddApprovalModal(tur){
+  openModal(tur==='Onay' ? 'Yeni Onay Ekle' : 'Yeni Hatırlatma Ekle', approvalFields(), {}, async (vals)=>{
+    const prefix = tur==='Onay' ? 'ONY' : 'HTR';
+    const sameType = approvalsReminders.filter(x=>x['Kayıt ID'] && x['Kayıt ID'].indexOf(prefix)===0);
+    const id = nextId(sameType, 'Kayıt ID', prefix);
+    const obj = { 'Kayıt ID': id, 'Tür': tur, 'Tamamlandı': false, 'Oluşturma Tarihi': todayISO(), ...vals };
+    const { data, error } = await sb.from('approvals_reminders').insert(objToRow(obj, APPROVAL_MAP)).select().single();
+    if(error){ dbErrorAlert('Kayıt eklenemedi', error); return false; }
+    approvalsReminders.push(rowToObj(data, APPROVAL_MAP));
+    renderApprovalsView();
+  });
+}
+function openEditApprovalModal(id){
+  const a = approvalsReminders.find(x=>x['Kayıt ID']===id);
+  openModal('Kaydı Düzenle · '+id, approvalFields(), a, async (vals)=>{
+    const merged = { ...a, ...vals };
+    const row = objToRow(merged, APPROVAL_MAP, ['kayit_id']);
+    const { data, error } = await sb.from('approvals_reminders').update(row).eq('kayit_id', id).select().single();
+    if(error){ dbErrorAlert('Kayıt güncellenemedi', error); return false; }
+    Object.assign(a, rowToObj(data, APPROVAL_MAP));
+    renderApprovalsView();
+  }, async ()=>{
+    const { error } = await sb.from('approvals_reminders').delete().eq('kayit_id', id);
+    if(error){ dbErrorAlert('Kayıt silinemedi', error); return false; }
+    approvalsReminders = approvalsReminders.filter(x=>x['Kayıt ID']!==id);
+    renderApprovalsView();
+  });
+}
+async function toggleApprovalDone(id, checked){
+  const a = approvalsReminders.find(x=>x['Kayıt ID']===id);
+  if(!a) return;
+  const prev = a['Tamamlandı'];
+  a['Tamamlandı'] = checked;
+  renderApprovalsView();
+  const { data, error } = await sb.from('approvals_reminders').update({tamamlandi:checked}).eq('kayit_id', id).select().single();
+  if(error){ dbErrorAlert('Durum güncellenemedi', error); a['Tamamlandı']=prev; renderApprovalsView(); return; }
+  Object.assign(a, rowToObj(data, APPROVAL_MAP));
+}
+async function updateApprovalField(id, col, val){
+  const { data, error } = await sb.from('approvals_reminders').update({[col]:val}).eq('kayit_id', id).select().single();
+  if(error){ dbErrorAlert('Güncellenemedi', error); return; }
+  const a = approvalsReminders.find(x=>x['Kayıt ID']===id);
+  if(a) Object.assign(a, rowToObj(data, APPROVAL_MAP));
+}
+async function moveApprovalPriority(id, newVal){
+  await updateApprovalField(id, 'oncelik', newVal);
+  renderApprovalsView();
+}
+
+function refreshAll(){
+  buildDashboard();
+  buildProjects();
+  buildDepartmentChips();
+  if(document.getElementById('view-mindmap').classList.contains('active')){
+    renderMindMap();
+  }
+  if(document.getElementById('view-approvals').classList.contains('active')){
+    renderApprovalsView();
+  }
+}
+
+/* ---------- tabs ---------- */
+document.getElementById('tabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-view]');
+  if(!btn) return;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  if(btn.dataset.view==='mindmap') renderMindMap();
+  if(btn.dataset.view==='approvals') renderApprovalsView();
+});
+
+/* ================= DASHBOARD ================= */
+function isOpenTaskStatus(s){ return s && s!=='Tamamlandı' && s!=='İptal'; }
+
+function buildDashboard(){
+  const allTasks = [...projectTasks, ...deptTasks.map(d=>({...d, 'Görev Durumu': d['Durum'], 'Görev Adı': d['Görev Adı'], 'Sorumlu Kişi': d['Sorumlu Kişi']}))];
+  const totalProjects = projects.length;
+  const activeProjects = projects.filter(p=>p['Proje Durumu']==='Aktif').length;
+  const delayedProjects = projects.filter(p=>p['Gecikme Durumu']==='Gecikmiş').length;
+  const totalTasks = allTasks.length;
+  const openTasks = allTasks.filter(t=>isOpenTaskStatus(t['Görev Durumu'])).length;
+  const delayedTasks = allTasks.filter(t=>t['Gecikme Durumu']==='Gecikmiş').length;
+  const avgCompletion = projects.reduce((a,p)=>a+(p['Tamamlanma Oranı']||0),0)/totalProjects;
+
+  const kpis = [
+    {label:'Toplam Proje', value:totalProjects, sub:activeProjects+' aktif'},
+    {label:'Geciken Proje', value:delayedProjects, sub:'sağlık durumuna bakın', cls: delayedProjects>0?'critical':'good'},
+    {label:'Toplam Görev', value:totalTasks, sub:'proje + departman'},
+    {label:'Açık Görev', value:openTasks, sub:'tamamlanmamış / iptal değil'},
+    {label:'Geciken Görev', value:delayedTasks, sub:'son tarihi geçmiş', cls: delayedTasks>0?'critical':'good'},
+    {label:'Ort. Proje Tamamlanma', value:pct(avgCompletion), sub:'tüm projeler ortalaması'},
+  ];
+  document.getElementById('kpiRow').innerHTML = kpis.map(k=>`
+    <div class="kpi-tile">
+      <div class="label">${k.label}</div>
+      <div class="value ${k.cls||''}">${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join('');
+
+  // chart: proje durumu dağılımı
+  const statuses = DATA.tanimlar['Proje Durumları'];
+  const statusCounts = statuses.map(s=>({label:s, value: projects.filter(p=>p['Proje Durumu']===s).length}));
+  renderBarList('chartProjectStatus', statusCounts, 'var(--seq-450)');
+
+  // chart: departman bazinda geciken gorev
+  const deptDelay = departments.map(d=>{
+    const own = deptTasks.filter(t=>t['Departman']===d && t['Gecikme Durumu']==='Gecikmiş').length;
+    const proj = projectTasks.filter(t=>t['Görev Sahibi Departman']===d && t['Gecikme Durumu']==='Gecikmiş').length;
+    return {label:d, value: own+proj};
+  }).sort((a,b)=>b.value-a.value);
+  renderBarList('chartDeptDelay', deptDelay, 'var(--critical)');
+
+  // chart: onceliğe göre açık görev
+  const prios = DATA.tanimlar['Öncelikler'];
+  const prioCounts = prios.map(p=>({label:p, value: allTasks.filter(t=>t['Öncelik']===p && isOpenTaskStatus(t['Görev Durumu'])).length}));
+  renderBarList('chartPriority', prioCounts, 'var(--seq-450)');
+
+  // chart: departman ortalama tamamlanma
+  const deptCompletion = departments.map(d=>{
+    const own = deptTasks.filter(t=>t['Departman']===d && t['Tamamlanma Oranı']!=null);
+    const proj = projectTasks.filter(t=>t['Görev Sahibi Departman']===d && t['Tamamlanma Oranı']!=null);
+    const all = [...own, ...proj];
+    const avg = all.length ? all.reduce((a,t)=>a+t['Tamamlanma Oranı'],0)/all.length : 0;
+    return {label:d, value: Math.round(avg*100)};
+  }).sort((a,b)=>b.value-a.value);
+  renderBarList('chartDeptCompletion', deptCompletion, 'var(--good)', true);
+
+  // critical delayed tasks table
+  const critical = projectTasks.filter(t=>t['Gecikme Durumu']==='Gecikmiş')
+    .sort((a,b)=>(b['Gecikme Günü']||0)-(a['Gecikme Günü']||0)).slice(0,6);
+  document.getElementById('tblCriticalDelay').innerHTML = `
+    <thead><tr><th>Görev</th><th>Proje</th><th>Sorumlu</th><th>Son Tarih</th><th>Gecikme</th><th>Öncelik</th><th>Sonraki Aksiyon</th></tr></thead>
+    <tbody>${critical.map(t=>`
+      <tr>
+        <td class="task-name">${esc(t['Görev Adı'])}</td>
+        <td>${esc(t['Proje Adı'])}</td>
+        <td>${esc(t['Sorumlu Kişi'])}</td>
+        <td>${fmtDate(t['Son Tarih'])}</td>
+        <td>${badge(t['Gecikme Günü']+' gün', 'critical')}</td>
+        <td>${badge(t['Öncelik'], priorityKind(t['Öncelik']))}</td>
+        <td style="color:var(--text-secondary)">${esc(t['Sonraki Aksiyon']||'—')}</td>
+      </tr>`).join('')}</tbody>`;
+}
+
+function renderBarList(elId, items, color, isPercent){
+  const max = isPercent ? 100 : Math.max(1, ...items.map(i=>i.value));
+  const el = document.getElementById(elId);
+  el.innerHTML = items.map(i=>{
+    const w = Math.round((i.value/max)*100);
+    return `<div class="barrow">
+      <div class="lbl">${esc(i.label)}</div>
+      <div class="track"><div class="fill" style="width:${w}%;background:${color}"></div></div>
+      <div class="val">${isPercent? i.value+'%' : i.value}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ================= PROJECTS ================= */
+let openProjectId = null;
+function buildProjects(){
+  const el = document.getElementById('projectList');
+  el.innerHTML = projects.map((p,i)=>{
+    const tasks = projectTasks.filter(t=>t['Proje ID']===p['Proje ID']);
+    const color = catColor(i);
+    const rate = p['Tamamlanma Oranı']||0;
+    return `<div class="proj-card ${p['Proje ID']===openProjectId?'open':''}" id="pc-${p['Proje ID']}">
+      <div class="proj-head" onclick="toggleProject('${p['Proje ID']}')">
+        <div class="proj-color" style="background:${color}"></div>
+        <div class="proj-info">
+          <div class="name">${esc(p['Proje Adı'])} <span style="color:var(--text-muted);font-weight:400;font-size:11px;">${p['Proje ID']}</span></div>
+          <div class="meta">${esc(p['Lider Departman'])} · ${esc(p['Proje Yöneticisi'])} · Hedef: ${fmtDate(p['Hedef Bitiş Tarihi'])}</div>
+        </div>
+        ${badge(p['Proje Durumu'], p['Proje Durumu']==='Tamamlandı'?'good':(p['Proje Durumu']==='İptal'?'muted':'warning'))}
+        ${badge(p['Öncelik'], priorityKind(p['Öncelik']))}
+        ${badge(p['Sağlık Durumu'], healthColor(p['Sağlık Durumu']))}
+        <div class="proj-progress">
+          <div class="track"><div class="fill" style="width:${Math.round(rate*100)}%;background:${color}"></div></div>
+          <div class="pct">${pct(p['Tamamlanma Oranı'])} tamamlandı</div>
+        </div>
+        <div class="icon-row" onclick="event.stopPropagation()">
+          <button class="btn ghost sm" title="Düzenle" onclick="openEditProjectModal('${p['Proje ID']}')">✎</button>
+        </div>
+        <div class="chev">▶</div>
+      </div>
+      <div class="proj-body">
+        <div class="proj-detail-grid">
+          <div><div class="k">Proje Sahibi</div><div class="v">${esc(p['Proje Sahibi'])}</div></div>
+          <div><div class="k">Katılımcı Departmanlar</div><div class="v">${esc(p['Katılımcı Departmanlar'])}</div></div>
+          <div><div class="k">Gecikme Durumu</div><div class="v">${badge(p['Gecikme Durumu'], delayColor(p['Gecikme Durumu']))}</div></div>
+          <div><div class="k">Sonraki Kilometre Taşı</div><div class="v">${esc(p['Sonraki Kilometre Taşı']||'—')}</div></div>
+          <div><div class="k">Risk / Blokaj</div><div class="v">${esc(p['Risk / Blokaj']||'—')}</div></div>
+          <div><div class="k">Sonraki Aksiyon</div><div class="v">${esc(p['Sonraki Aksiyon']||'—')}</div></div>
+        </div>
+        <div class="section-head-row" style="margin:0 0 10px;">
+          <div style="font-size:12px;color:var(--text-muted);font-weight:600;">Görevler ve Alt Görevler (${tasks.length})</div>
+          <button class="btn sm" onclick="openAddTaskModal('${p['Proje ID']}')">+ Görev Ekle</button>
+        </div>
+        ${taskCardsHtml(p['Proje ID'], color)}
+
+        <div class="section-head-row">
+          <h2 class="section-title" style="margin:0;">Zaman Çizelgesi (Gantt)</h2>
+        </div>
+        ${ganttHtml(p, color)}
+
+        <div class="section-head-row">
+          <h2 class="section-title" style="margin:0;">Paydaşlar</h2>
+          <button class="btn sm" onclick="openAddStakeholderModal('${p['Proje ID']}')">+ Paydaş Ekle</button>
+        </div>
+        ${stakeholdersHtml(p['Proje ID'])}
+      </div>
+    </div>`;
+  }).join('') || '<div class="empty-hint">Henüz proje yok. "+ Yeni Proje" ile ekleyebilirsin.</div>';
+}
+function toggleProject(id){
+  const card = document.getElementById('pc-'+id);
+  const wasOpen = card.classList.contains('open');
+  document.querySelectorAll('.proj-card.open').forEach(c=>c.classList.remove('open'));
+  if(!wasOpen){ card.classList.add('open'); openProjectId = id; }
+  else { openProjectId = null; }
+}
+
+/* ---------- redesigned task/subtask cards ---------- */
+let openTaskIds = new Set();
+function toggleTaskCard(id){
+  if(openTaskIds.has(id)) openTaskIds.delete(id); else openTaskIds.add(id);
+  const card = document.getElementById('tc-'+id);
+  if(card) card.classList.toggle('open');
+}
+function taskCardsHtml(projectId, color){
+  const tasks = projectTasks.filter(t=>t['Proje ID']===projectId);
+  if(!tasks.length) return `<div class="empty-hint">Bu projeye bağlı görev yok. "+ Görev Ekle" ile ekleyebilirsin.</div>`;
+  return `<div class="task-list">${tasks.map(t=>{
+    const subs = subtasks.filter(s=>s['Görev ID']===t['Görev ID']);
+    const isOpen = openTaskIds.has(t['Görev ID']);
+    return `<div class="task-card ${isOpen?'open':''}" id="tc-${t['Görev ID']}">
+      <div class="task-card-head" onclick="toggleTaskCard('${t['Görev ID']}')">
+        <div class="chev-sm">▶</div>
+        <div class="task-main">
+          <div class="tname">${esc(t['Görev Adı'])} <span style="color:var(--text-muted);font-weight:400;font-size:10.5px;">${t['Görev ID']}</span>${subs.length?` <span style="color:var(--text-muted);font-weight:400;">· ${subs.length} alt görev</span>`:''}</div>
+          <div class="tsub">${esc(t['Sorumlu Kişi']||'—')} · ${esc(t['Görev Sahibi Departman']||'—')} · Son: ${fmtDate(t['Son Tarih'])}${t['Bağımlı Olduğu Görev']?' · bağlı: '+esc(t['Bağımlı Olduğu Görev']):''}</div>
+        </div>
+        ${badge(t['Görev Durumu'], t['Görev Durumu']==='Tamamlandı'?'good':(t['Görev Durumu']==='İptal'?'muted':'warning'))}
+        ${badge(t['Öncelik'], priorityKind(t['Öncelik']))}
+        ${t['Gecikme Durumu']==='Gecikmiş'? badge(t['Gecikme Günü']+' gün','critical') : badge(t['Gecikme Durumu'], delayColor(t['Gecikme Durumu']))}
+        <div class="task-progress-mini"><span class="mini-track"><span class="mini-fill" style="width:${Math.round((t['Tamamlanma Oranı']||0)*100)}%;background:${color}"></span></span>${pct(t['Tamamlanma Oranı'])}</div>
+        <div class="icon-row" onclick="event.stopPropagation()">
+          <button class="btn ghost sm" title="Düzenle" onclick="openEditTaskModal('${t['Görev ID']}')">✎</button>
+        </div>
+      </div>
+      <div class="task-card-body">
+        <div class="subtask-head-row">
+          <div class="lbl">Alt Görevler (${subs.length})</div>
+          <button class="btn sm" onclick="event.stopPropagation();openAddSubtaskModal('${t['Görev ID']}')">+ Alt Görev Ekle</button>
+        </div>
+        <div class="subtask-list">
+          ${subs.length ? subs.map(s=>`
+            <div class="subtask-row">
+              <span style="width:5px;height:5px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+              <span class="sname">${esc(s['Alt Görev Adı'])}</span>
+              ${badge(s['Durum']||'—', s['Durum']==='Tamamlandı'?'good':(s['Durum']==='İptal'?'muted':'warning'))}
+              <span class="smeta">${esc(s['Sorumlu Kişi']||'—')} · ${fmtDate(s['Son Tarih'])}</span>
+              <button class="btn ghost sm" title="Düzenle" onclick="openEditSubtaskModal('${s['Alt Görev ID']}')">✎</button>
+            </div>`).join('') : '<div class="subtask-empty">Henüz alt görev yok.</div>'}
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ---------- paydaşlar (stakeholders) ---------- */
+function stakeholdersHtml(projectId){
+  const list = stakeholders.filter(s=>s['Proje ID']===projectId);
+  if(!list.length) return `<div class="empty-hint">Bu projeye eklenmiş paydaş yok. "+ Paydaş Ekle" ile ekleyebilirsin.</div>`;
+  return `<div class="stake-grid">${list.map(s=>`
+    <div class="stake-card">
+      <div class="sname">${esc(s['Ad Soyad'])}</div>
+      <div class="srole">${esc(s['Rol']||'—')}${s['Kurum']?' · '+esc(s['Kurum']):''}</div>
+      <div class="scontact">
+        ${s['Telefon']?`<div>📞 <a href="tel:${esc(s['Telefon'])}">${esc(s['Telefon'])}</a></div>`:''}
+        ${s['E-posta']?`<div>✉️ <a href="mailto:${esc(s['E-posta'])}">${esc(s['E-posta'])}</a></div>`:''}
+        ${s['Notlar']?`<div style="margin-top:4px;color:var(--text-muted);">${esc(s['Notlar'])}</div>`:''}
+      </div>
+      <div class="sactions"><button class="btn ghost sm" onclick="openEditStakeholderModal('${esc(s['Paydaş ID'])}')">✎ Düzenle</button></div>
+    </div>`).join('')}</div>`;
+}
+
+/* ---------- gantt (otomatik + çift taraflı sürükle-bırak) ---------- */
+const GANTT_PXDAY = 26;
+function ganttDiffDays(aISO, bISO){ return Math.round((new Date(bISO+'T00:00:00') - new Date(aISO+'T00:00:00'))/86400000); }
+function ganttAddDays(iso, days){ const d = new Date(iso+'T00:00:00'); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
+
+function ganttRowsForProject(p){
+  const tasks = projectTasks.filter(t=>t['Proje ID']===p['Proje ID']);
+  const rows = [];
+  let minD = null, maxD = null;
+  const consider = (s,e)=>{ if(s && (!minD||s<minD)) minD=s; if(e && (!maxD||e>maxD)) maxD=e; };
+  consider(p['Başlangıç Tarihi'], p['Hedef Bitiş Tarihi']);
+  tasks.forEach(t=>{
+    const subs = subtasks.filter(s=>s['Görev ID']===t['Görev ID']);
+    if(subs.length){
+      const starts = subs.map(s=>s['Başlangıç Tarihi']).filter(Boolean);
+      const ends = subs.map(s=>s['Son Tarih']).filter(Boolean);
+      const autoStart = starts.length ? starts.reduce((a,b)=>a<b?a:b) : t['Başlangıç Tarihi'];
+      const autoEnd = ends.length ? ends.reduce((a,b)=>a>b?a:b) : t['Son Tarih'];
+      consider(autoStart, autoEnd);
+      rows.push({kind:'group', id:t['Görev ID'], label:t['Görev Adı'], start:autoStart, end:autoEnd, subIds:subs.map(s=>s['Alt Görev ID'])});
+      subs.forEach(s=>{
+        consider(s['Başlangıç Tarihi'], s['Son Tarih']);
+        rows.push({kind:'subtask', id:s['Alt Görev ID'], parentId:t['Görev ID'], label:s['Alt Görev Adı'], start:s['Başlangıç Tarihi'], end:s['Son Tarih']});
+      });
+    } else {
+      consider(t['Başlangıç Tarihi'], t['Son Tarih']);
+      rows.push({kind:'task', id:t['Görev ID'], label:t['Görev Adı'], start:t['Başlangıç Tarihi'], end:t['Son Tarih']});
+    }
+  });
+  return { rows, minD, maxD };
+}
+
+function ganttHtml(p, color){
+  const { rows, minD, maxD } = ganttRowsForProject(p);
+  if(!rows.length || !minD || !maxD){
+    return `<div class="gantt-outer"><div class="gantt-empty">Gantt oluşturmak için görev/alt görevlere başlangıç ve son tarih ekleyin.</div></div>`;
+  }
+  const origin = ganttAddDays(minD, -2);
+  const totalDays = Math.max(7, ganttDiffDays(origin, maxD)+3);
+  const totalW = totalDays * GANTT_PXDAY;
+
+  let ticks = '';
+  for(let d=0; d<=totalDays; d+=7){
+    ticks += `<div class="gantt-tick" style="left:${d*GANTT_PXDAY}px;">${esc(fmtDate(ganttAddDays(origin,d)))}</div>`;
+  }
+  const todayOffset = ganttDiffDays(origin, todayISO());
+  const todayLine = (todayOffset>=0 && todayOffset<=totalDays)
+    ? `<div class="gantt-today-line" style="left:${todayOffset*GANTT_PXDAY}px;top:0;bottom:0;"></div>` : '';
+
+  const labelRows = rows.map(r=>`<div class="gantt-label-row ${r.kind==='subtask'?'sub':''}" title="${esc(r.label)}">${r.kind==='subtask'?'↳ ':''}${esc(r.label)}</div>`).join('');
+
+  const trackRows = rows.map(r=>{
+    if(!r.start || !r.end) return `<div class="gantt-track-row"></div>`;
+    const left = Math.max(0, ganttDiffDays(origin, r.start))*GANTT_PXDAY;
+    const w = Math.max(1, ganttDiffDays(r.start, r.end)+1)*GANTT_PXDAY;
+    const barClass = r.kind==='group' ? 'gantt-bar auto' : 'gantt-bar';
+    const resizeHandles = r.kind==='group' ? '' :
+      `<div class="handle l" onmousedown="ganttPointerDown(event,'resize-left')"></div><div class="handle r" onmousedown="ganttPointerDown(event,'resize-right')"></div>`;
+    const dataAttrs = r.kind==='group'
+      ? `data-kind="group" data-task-id="${esc(r.id)}" data-sub-ids="${esc(r.subIds.join(','))}"`
+      : (r.kind==='subtask' ? `data-kind="subtask" data-id="${esc(r.id)}"` : `data-kind="task" data-id="${esc(r.id)}"`);
+    return `<div class="gantt-track-row">
+      <div class="${barClass}" style="left:${left}px;width:${w}px;background:${color};" ${dataAttrs}
+        data-start="${r.start}" data-end="${r.end}"
+        onmousedown="ganttPointerDown(event,'move')" title="${esc(r.label)}: ${fmtDate(r.start)} → ${fmtDate(r.end)}">
+        <span style="overflow:hidden;text-overflow:ellipsis;">${esc(r.label)}</span>
+        ${resizeHandles}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="gantt-outer">
+    <div class="gantt-scroll"><div class="gantt-flex">
+      <div class="gantt-label-col">
+        <div class="gantt-label-row header">Görev / Alt Görev</div>
+        ${labelRows}
+      </div>
+      <div class="gantt-timeline" style="width:${totalW}px;">
+        <div class="gantt-ruler" style="width:${totalW}px;">${ticks}</div>
+        ${trackRows}
+        ${todayLine}
+      </div>
+    </div></div>
+    <div class="gantt-legend">
+      <span><span class="sw" style="background:${color}"></span>Çubuğu sürükleyerek taşı, kenarından tutup uzat/kısalt — değişiklik otomatik kaydedilir</span>
+      <span><span class="sw" style="background:${color};opacity:.5;border:1px dashed #fff;"></span>Kesikli çubuk = alt görevlerden otomatik hesaplanan aralık; taşınınca tüm alt görevler birlikte kayar</span>
+    </div>
+  </div>`;
+}
+
+let ganttDrag = null;
+function ganttPointerDown(ev, mode){
+  ev.preventDefault(); ev.stopPropagation();
+  const bar = ev.target.closest('.gantt-bar');
+  if(!bar) return;
+  ganttDrag = {
+    mode, bar, startX: ev.clientX,
+    kind: bar.dataset.kind, id: bar.dataset.id, taskId: bar.dataset.taskId,
+    subIds: bar.dataset.subIds ? bar.dataset.subIds.split(',').filter(Boolean) : [],
+    origStart: bar.dataset.start, origEnd: bar.dataset.end,
+    origLeft: parseFloat(bar.style.left), origWidth: parseFloat(bar.style.width),
+  };
+  document.body.style.userSelect = 'none';
+}
+document.addEventListener('mousemove', (ev)=>{
+  if(!ganttDrag) return;
+  const dx = ev.clientX - ganttDrag.startX;
+  const bar = ganttDrag.bar;
+  if(ganttDrag.mode==='move'){
+    bar.style.left = (ganttDrag.origLeft + dx) + 'px';
+  } else if(ganttDrag.mode==='resize-left'){
+    const newLeft = Math.min(ganttDrag.origLeft + ganttDrag.origWidth - GANTT_PXDAY, ganttDrag.origLeft + dx);
+    bar.style.left = newLeft + 'px';
+    bar.style.width = (ganttDrag.origLeft + ganttDrag.origWidth - newLeft) + 'px';
+  } else if(ganttDrag.mode==='resize-right'){
+    const newWidth = Math.max(GANTT_PXDAY, ganttDrag.origWidth + dx);
+    bar.style.width = newWidth + 'px';
+  }
+});
+document.addEventListener('mouseup', async (ev)=>{
+  if(!ganttDrag) return;
+  const drag = ganttDrag; ganttDrag = null;
+  document.body.style.userSelect = '';
+  const dx = ev.clientX - drag.startX;
+  const deltaDays = Math.round(dx / GANTT_PXDAY);
+  const leftDeltaDays = Math.round((parseFloat(drag.bar.style.left) - drag.origLeft)/GANTT_PXDAY);
+  const widthDeltaDays = Math.round((parseFloat(drag.bar.style.width) - drag.origWidth)/GANTT_PXDAY);
+  if(drag.mode==='move' && deltaDays===0) return;
+  if(drag.mode!=='move' && leftDeltaDays===0 && widthDeltaDays===0) return;
+  try{
+    if(drag.kind==='group'){
+      const newStart = ganttAddDays(drag.origStart, deltaDays);
+      const newEnd = ganttAddDays(drag.origEnd, deltaDays);
+      await updateTaskDates(drag.taskId, newStart, newEnd);
+      await Promise.all(drag.subIds.map(sid=>{
+        const s = subtasks.find(x=>x['Alt Görev ID']===sid);
+        if(!s || !s['Başlangıç Tarihi'] || !s['Son Tarih']) return Promise.resolve();
+        return updateSubtaskDates(sid, ganttAddDays(s['Başlangıç Tarihi'], deltaDays), ganttAddDays(s['Son Tarih'], deltaDays));
+      }));
+    } else {
+      let newStart = drag.origStart, newEnd = drag.origEnd;
+      if(drag.mode==='move'){ newStart = ganttAddDays(drag.origStart, deltaDays); newEnd = ganttAddDays(drag.origEnd, deltaDays); }
+      else if(drag.mode==='resize-left'){ newStart = ganttAddDays(drag.origStart, leftDeltaDays); }
+      else if(drag.mode==='resize-right'){ newEnd = ganttAddDays(drag.origEnd, widthDeltaDays); }
+      if(new Date(newEnd) < new Date(newStart)) newEnd = newStart;
+      if(drag.kind==='task') await updateTaskDates(drag.id, newStart, newEnd);
+      else await updateSubtaskDates(drag.id, newStart, newEnd);
+    }
+  } finally {
+    refreshAll();
+  }
+});
+
+/* ================= MIND MAP ================= */
+let mmMode = 'projects';
+document.getElementById('mmSwitch').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-mode]');
+  if(!btn) return;
+  document.querySelectorAll('#mmSwitch button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  mmMode = btn.dataset.mode;
+  document.getElementById('mmAddBtn').style.display = mmMode==='projects' ? '' : 'none';
+  closeMindPanel();
+  renderMindMap();
+});
+document.getElementById('mmPanelClose').addEventListener('click', closeMindPanel);
+function closeMindPanel(){
+  document.getElementById('mmPanel').classList.remove('open');
+  document.querySelectorAll('.mm-node.selected').forEach(n=>n.classList.remove('selected'));
+  selectedMindId = null;
+}
+
+function renderMindMap(){
+  const wrap = document.getElementById('mmWrap');
+  const svg = document.getElementById('mmSvg');
+  const nodesEl = document.getElementById('mmNodes');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  const cx = W/2, cy = H/2;
+
+  let items;
+  if(mmMode==='projects'){
+    items = projects.map((p,i)=>({
+      id:p['Proje ID'], label:p['Proje Adı'], sub:p['Lider Departman'],
+      color:catColor(i), progress:p['Tamamlanma Oranı'], health:p['Sağlık Durumu']
+    }));
+  } else {
+    items = departments.map((d,i)=>{
+      const own = deptTasks.filter(t=>t['Departman']===d);
+      const proj = projectTasks.filter(t=>t['Görev Sahibi Departman']===d);
+      const all = [...own, ...proj];
+      const open = all.filter(t=>isOpenTaskStatus(t['Görev Durumu']||t['Durum'])).length;
+      return { id:d, label:d, sub: all.length+' görev', color:catColor(i), progress:null, count: all.length, open };
+    });
+  }
+
+  const R = Math.min(W,H)/2 - 90;
+  svg.innerHTML = '';
+  nodesEl.innerHTML = '';
+
+  const centerLabel = mmMode==='projects' ? 'Insha Ventures<br><span class="sub">Projeler</span>' : 'Insha Ventures<br><span class="sub">Departmanlar</span>';
+  const centerNode = document.createElement('div');
+  centerNode.className='mm-node center';
+  centerNode.style.left = cx+'px'; centerNode.style.top = cy+'px';
+  centerNode.innerHTML = centerLabel;
+  nodesEl.appendChild(centerNode);
+
+  const ns = 'http://www.w3.org/2000/svg';
+  items.forEach((it,i)=>{
+    const angle = (i/items.length)*Math.PI*2 - Math.PI/2;
+    const x = cx + R*Math.cos(angle);
+    const y = cy + R*Math.sin(angle);
+    const path = document.createElementNS(ns,'path');
+    const mx = cx + (x-cx)*0.5, my = cy + (y-cy)*0.5 + (i%2===0?-30:30);
+    path.setAttribute('d', `M ${cx} ${cy} Q ${mx} ${my} ${x} ${y}`);
+    path.setAttribute('stroke', it.color);
+    path.setAttribute('stroke-width','2');
+    path.setAttribute('fill','none');
+    path.setAttribute('opacity','0.55');
+    svg.appendChild(path);
+
+    const node = document.createElement('div');
+    node.className='mm-node';
+    node.id = 'mm-node-'+it.id;
+    node.style.left = x+'px'; node.style.top = y+'px';
+    node.style.background = it.color;
+    node.innerHTML = `${esc(it.label)}<span class="sub">${esc(it.sub)}</span>`;
+    node.onclick = ()=>openMindPanel(it);
+    nodesEl.appendChild(node);
+  });
+
+  if(selectedMindId){
+    const again = items.find(it=>it.id===selectedMindId);
+    if(again) openMindPanel(again);
+    else closeMindPanel();
+  }
+}
+window.addEventListener('resize', ()=>{ if(document.getElementById('view-mindmap').classList.contains('active')) renderMindMap(); });
+
+let selectedMindId = null;
+function openMindPanel(it){
+  selectedMindId = it.id;
+  document.querySelectorAll('.mm-node.selected').forEach(n=>n.classList.remove('selected'));
+  const node = document.getElementById('mm-node-'+it.id);
+  if(node) node.classList.add('selected');
+
+  const panel = document.getElementById('mmPanel');
+  const body = document.getElementById('mmPanelBody');
+
+  if(mmMode==='projects'){
+    const p = projects.find(pr=>pr['Proje ID']===it.id);
+    const tasks = projectTasks.filter(t=>t['Proje ID']===it.id);
+    body.innerHTML = `
+      <div class="section-head-row" style="margin:0 0 4px;">
+        <h4 style="margin:0;">${esc(p['Proje Adı'])}</h4>
+        <button class="btn ghost sm" title="Projeyi düzenle" onclick="openEditProjectModal('${p['Proje ID']}')">✎ Düzenle</button>
+      </div>
+      <div class="meta-line">${esc(p['Proje ID'])} · ${esc(p['Lider Departman'])} · ${badge(p['Sağlık Durumu'], healthColor(p['Sağlık Durumu']))}</div>
+      <div style="margin-bottom:16px;font-size:12.5px;color:var(--text-secondary);line-height:1.5;">${esc(p['Proje Açıklaması'])}</div>
+      <div class="proj-progress" style="width:100%;margin-bottom:16px;">
+        <div class="track"><div class="fill" style="width:${Math.round(p['Tamamlanma Oranı']*100)}%;background:${it.color}"></div></div>
+        <div class="pct">${pct(p['Tamamlanma Oranı'])} tamamlandı · ${badge(p['Proje Durumu'],'muted')}</div>
+      </div>
+      <div class="section-head-row" style="margin:0 0 8px;">
+        <h2 class="section-title" style="margin:0;">Alt Görevler (${tasks.length})</h2>
+        <button class="btn sm" onclick="openAddTaskModal('${p['Proje ID']}')">+ Ekle</button>
+      </div>
+      ${tasks.map(t=>{
+        const subs = subtasks.filter(s=>s['Görev ID']===t['Görev ID']);
+        return `<div class="task-item">
+          <div class="section-head-row" style="margin:0;">
+            <div class="tname">${esc(t['Görev Adı'])}${subs.length?` <span style="color:var(--text-muted);font-weight:400;font-size:11px;">· ${subs.length} alt görev</span>`:''}</div>
+            <button class="btn ghost sm" title="Düzenle" onclick="openEditTaskModal('${t['Görev ID']}')">✎</button>
+          </div>
+          <div class="trow">${badge(t['Görev Durumu'], t['Görev Durumu']==='Tamamlandı'?'good':(t['Görev Durumu']==='İptal'?'muted':'warning'))}
+            <span>${esc(t['Sorumlu Kişi']||'—')}</span><span>· ${fmtDate(t['Son Tarih'])}</span></div>
+          ${subs.length?`<div class="subtask-list" style="margin-top:8px;">${subs.map(s=>`
+            <div class="subtask-row">
+              <span style="width:5px;height:5px;border-radius:50%;background:${it.color};flex-shrink:0;"></span>
+              <span class="sname">${esc(s['Alt Görev Adı'])}</span>
+              ${badge(s['Durum']||'—', s['Durum']==='Tamamlandı'?'good':(s['Durum']==='İptal'?'muted':'warning'))}
+              <span class="smeta">${fmtDate(s['Son Tarih'])}</span>
+            </div>`).join('')}</div>`:''}
+        </div>`;
+      }).join('') || '<div style="color:var(--text-muted);font-size:12.5px;">Bu projeye bağlı görev yok.</div>'}
+    `;
+  } else {
+    const own = deptTasks.filter(t=>t['Departman']===it.id);
+    const proj = projectTasks.filter(t=>t['Görev Sahibi Departman']===it.id);
+    body.innerHTML = `
+      <h4 style="margin:0 0 4px;">${esc(it.label)}</h4>
+      <div class="meta-line">${it.count} görev · ${it.open} açık</div>
+      <div class="section-head-row" style="margin:0 0 8px;">
+        <h2 class="section-title" style="margin:0;">Departman Görevleri (${own.length})</h2>
+        <button class="btn sm" onclick="openAddDeptTaskModal('${it.id.replace(/'/g,"\\'")}')">+ Ekle</button>
+      </div>
+      ${own.map(t=>`
+        <div class="task-item">
+          <div class="section-head-row" style="margin:0;">
+            <div class="tname">${esc(t['Görev Adı'])}</div>
+            <button class="btn ghost sm" title="Düzenle" onclick="openEditDeptTaskModal('${t['Rutin Görev ID']}')">✎</button>
+          </div>
+          <div class="trow">${badge(t['Durum'], t['Durum']==='Tamamlandı'?'good':(t['Durum']==='İptal'?'muted':'warning'))}
+            <span>${esc(t['Sorumlu Kişi']||'—')}</span><span>· ${fmtDate(t['Son Tarih'])}</span></div>
+        </div>`).join('') || '<div style="color:var(--text-muted);font-size:12.5px;">Görev yok.</div>'}
+      <h2 class="section-title">Proje Kapsamındaki Görevler (${proj.length})</h2>
+      ${proj.map(t=>`
+        <div class="task-item">
+          <div class="section-head-row" style="margin:0;">
+            <div class="tname">${esc(t['Görev Adı'])}</div>
+            <button class="btn ghost sm" title="Düzenle" onclick="openEditTaskModal('${t['Görev ID']}')">✎</button>
+          </div>
+          <div class="trow">${badge(t['Görev Durumu'], t['Görev Durumu']==='Tamamlandı'?'good':(t['Görev Durumu']==='İptal'?'muted':'warning'))}
+            <span>${esc(t['Proje Adı'])}</span><span>· ${fmtDate(t['Son Tarih'])}</span></div>
+        </div>`).join('') || '<div style="color:var(--text-muted);font-size:12.5px;">Görev yok.</div>'}
+    `;
+  }
+  panel.classList.add('open');
+}
+
+/* ================= DEPARTMENTS ================= */
+let currentDept = departments[0];
+function buildDepartmentChips(){
+  document.getElementById('deptChips').innerHTML = departments.map(d=>
+    `<div class="dept-chip ${d===currentDept?'active':''}" onclick="selectDept('${d.replace(/'/g,"\\'")}')">${esc(d)}</div>`
+  ).join('');
+  renderDeptContent();
+}
+function selectDept(d){
+  currentDept = d;
+  document.querySelectorAll('.dept-chip').forEach(c=>c.classList.toggle('active', c.textContent===d));
+  renderDeptContent();
+}
+function renderDeptContent(){
+  const own = deptTasks.filter(t=>t['Departman']===currentDept);
+  const proj = projectTasks.filter(t=>t['Görev Sahibi Departman']===currentDept);
+  const all = [...own.map(t=>({...t,'Görev Durumu':t['Durum']})), ...proj];
+  const open = all.filter(t=>isOpenTaskStatus(t['Görev Durumu'])).length;
+  const delayed = all.filter(t=>t['Gecikme Durumu']==='Gecikmiş').length;
+  const withRate = all.filter(t=>t['Tamamlanma Oranı']!=null);
+  const avg = withRate.length ? withRate.reduce((a,t)=>a+t['Tamamlanma Oranı'],0)/withRate.length : 0;
+
+  document.getElementById('deptContent').innerHTML = `
+    <div class="dept-kpi-row">
+      <div class="kpi-tile"><div class="label">Toplam Görev</div><div class="value">${all.length}</div></div>
+      <div class="kpi-tile"><div class="label">Açık Görev</div><div class="value">${open}</div></div>
+      <div class="kpi-tile"><div class="label">Geciken Görev</div><div class="value ${delayed>0?'critical':'good'}">${delayed}</div></div>
+      <div class="kpi-tile"><div class="label">Ort. Tamamlanma</div><div class="value">${pct(avg)}</div></div>
+    </div>
+    <div class="section-head-row" style="margin-top:0;">
+      <h2 class="section-title" style="margin:0;">Departmanın Kendi Görevleri</h2>
+      <button class="btn" onclick="openAddDeptTaskModal('${currentDept.replace(/'/g,"\\'")}')">+ Görev Ekle</button>
+    </div>
+    <div class="card" style="overflow-x:auto;margin-bottom:24px;">
+      <table>
+        <thead><tr><th>Görev ID</th><th>Görev Adı</th><th>Sorumlu</th><th>Son Tarih</th><th>Durum</th><th>İlerleme</th><th>Öncelik</th><th>Gecikme</th><th></th></tr></thead>
+        <tbody>${own.map(t=>`
+          <tr>
+            <td>${esc(t['Rutin Görev ID'])}</td>
+            <td class="task-name">${esc(t['Görev Adı'])}</td>
+            <td>${esc(t['Sorumlu Kişi']||'—')}</td>
+            <td>${fmtDate(t['Son Tarih'])}</td>
+            <td>${badge(t['Durum'], t['Durum']==='Tamamlandı'?'good':(t['Durum']==='İptal'?'muted':'warning'))}</td>
+            <td>${pct(t['Tamamlanma Oranı'])}</td>
+            <td>${badge(t['Öncelik'], priorityKind(t['Öncelik']))}</td>
+            <td>${t['Gecikme Durumu']==='Gecikmiş'? badge(t['Gecikme Günü']+' gün','critical') : badge(t['Gecikme Durumu']||'—', delayColor(t['Gecikme Durumu']))}</td>
+            <td class="row-actions"><button class="btn ghost sm" title="Düzenle" onclick="openEditDeptTaskModal('${t['Rutin Görev ID']}')">✎</button></td>
+          </tr>`).join('') || `<tr><td colspan="9" style="color:var(--text-muted);">Bu departmana ait rutin görev yok.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+    <h2 class="section-title">Proje Kapsamındaki Görevler</h2>
+    <div class="card" style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>Görev ID</th><th>Görev Adı</th><th>Proje</th><th>Sorumlu</th><th>Son Tarih</th><th>Durum</th><th>İlerleme</th><th>Gecikme</th><th></th></tr></thead>
+        <tbody>${proj.map(t=>`
+          <tr>
+            <td>${esc(t['Görev ID'])}</td>
+            <td class="task-name">${esc(t['Görev Adı'])}</td>
+            <td>${esc(t['Proje Adı'])}</td>
+            <td>${esc(t['Sorumlu Kişi']||'—')}</td>
+            <td>${fmtDate(t['Son Tarih'])}</td>
+            <td>${badge(t['Görev Durumu'], t['Görev Durumu']==='Tamamlandı'?'good':(t['Görev Durumu']==='İptal'?'muted':'warning'))}</td>
+            <td>${pct(t['Tamamlanma Oranı'])}</td>
+            <td>${t['Gecikme Durumu']==='Gecikmiş'? badge(t['Gecikme Günü']+' gün','critical') : badge(t['Gecikme Durumu'], delayColor(t['Gecikme Durumu']))}</td>
+            <td class="row-actions"><button class="btn ghost sm" title="Düzenle" onclick="openEditTaskModal('${t['Görev ID']}')">✎</button></td>
+          </tr>`).join('') || `<tr><td colspan="9" style="color:var(--text-muted);">Bu departmana bağlı proje görevi yok.</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ================= ONAY & HATIRLATMA VIEW ================= */
+let arTab = 'Onay';
+document.getElementById('arTabs').addEventListener('click', e=>{
+  const btn = e.target.closest('button[data-artab]');
+  if(!btn) return;
+  document.querySelectorAll('#arTabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  arTab = btn.dataset.artab;
+  const addBtn = document.getElementById('arAddBtn');
+  addBtn.textContent = arTab==='Onay' ? '+ Yeni Onay' : '+ Yeni Hatırlatma';
+  addBtn.onclick = ()=>openAddApprovalModal(arTab);
+  renderApprovalsView();
+});
+
+let expandedApprovalIds = new Set();
+function toggleApprovalExpand(id){
+  if(expandedApprovalIds.has(id)) expandedApprovalIds.delete(id); else expandedApprovalIds.add(id);
+  renderApprovalsView();
+}
+function renderApprovalsView(){
+  const board = document.getElementById('kanbanBoard');
+  if(!board) return;
+  const levels = T['Öncelikler']; // Kritik / Yüksek / Orta / Düşük
+  const items = approvalsReminders.filter(x=>x['Tür']===arTab);
+  board.innerHTML = levels.map(lvl=>{
+    const colItems = items.filter(x=>(x['Öncelik']||'Orta')===lvl)
+      .sort((a,b)=>(a['Tamamlandı']?1:0)-(b['Tamamlandı']?1:0));
+    return `<div class="kanban-col" data-lvl="${esc(lvl)}"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleKanbanDrop(event,'${esc(lvl)}')">
+      <h4>${badge(lvl, priorityKind(lvl))} <span style="color:var(--text-muted);font-weight:400;">${colItems.length}</span></h4>
+      ${colItems.map(it=>{
+        const expanded = expandedApprovalIds.has(it['Kayıt ID']);
+        const proj = projects.find(p=>p['Proje ID']===it['İlgili Proje ID']);
+        return `<div class="kanban-card ${it['Tamamlandı']?'done':''}" draggable="true"
+            ondragstart="event.dataTransfer.setData('text/plain','${esc(it['Kayıt ID'])}')">
+          <div class="chk-row">
+            <input type="checkbox" ${it['Tamamlandı']?'checked':''} onclick="toggleApprovalDone('${esc(it['Kayıt ID'])}', this.checked)">
+            <div class="ctitle" onclick="toggleApprovalExpand('${esc(it['Kayıt ID'])}')">${esc(it['Başlık'])}</div>
+          </div>
+          <div class="cmeta">${proj?esc(proj['Proje Adı'])+' · ':''}${it['Sorumlu Kişi']?esc(it['Sorumlu Kişi'])+' · ':''}${it['Son Tarih']?fmtDate(it['Son Tarih']):'son tarih yok'}</div>
+          ${expanded?`<div class="cdesc">
+            <textarea placeholder="Açıklama yaz…" onblur="updateApprovalField('${esc(it['Kayıt ID'])}','aciklama', this.value)">${esc(it['Açıklama']||'')}</textarea>
+            <div class="cactions">
+              <button class="btn ghost sm" title="Sil" onclick="openEditApprovalModal('${esc(it['Kayıt ID'])}')">✎ Düzenle / Sil</button>
+            </div>
+          </div>`:''}
+        </div>`;
+      }).join('') || '<div class="subtask-empty">Kayıt yok</div>'}
+    </div>`;
+  }).join('');
+}
+function handleKanbanDrop(ev, lvl){
+  ev.preventDefault();
+  ev.currentTarget.classList.remove('dragover');
+  const id = ev.dataTransfer.getData('text/plain');
+  if(id) moveApprovalPriority(id, lvl);
+}
+
+/* ---------- init ---------- */
+(async function init(){
+  await loadAllData();
+  buildDashboard();
+  buildProjects();
+  buildDepartmentChips();
+  document.getElementById('loadingScreen').style.display = 'none';
+})();
+</script>
+</body>
+</html>
